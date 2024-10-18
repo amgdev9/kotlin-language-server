@@ -85,7 +85,6 @@ class KotlinWorkspaceService(
         }
     }
 
-    @Suppress("LongMethod", "CyclomaticComplexMethod", "NestedBlockDepth")
     override fun didChangeConfiguration(params: DidChangeConfigurationParams) {
         val settings = params.settings as? JsonObject
         settings?.get("kotlin")?.asJsonObject?.apply {
@@ -105,22 +104,6 @@ class KotlinWorkspaceService(
                         jvm.target = it
                         cp.updateCompilerConfiguration()
                     }
-                }
-            }
-
-            // Update options for formatting
-            get("formatting")?.asJsonObject?.apply {
-                val formatting = config.formatting
-                get("formatter")?.asString?.let {
-                    formatting.formatter = it
-                }
-                get("ktfmt")?.asJsonObject?.apply {
-                    val ktfmt = formatting.ktfmt
-                    get("style")?.asString?.let { ktfmt.style = it }
-                    get("indent")?.asInt?.let { ktfmt.indent = it }
-                    get("maxWidth")?.asInt?.let { ktfmt.maxWidth = it }
-                    get("continuationIndent")?.asInt?.let { ktfmt.continuationIndent = it }
-                    get("removeUnusedImports")?.asBoolean?.let { ktfmt.removeUnusedImports = it }
                 }
             }
 

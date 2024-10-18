@@ -23,3 +23,6 @@ out
 !.vscode/launch.json
 !.vscode/tasks.json
 *.vsix
+
+# KLS
+kls_database.db

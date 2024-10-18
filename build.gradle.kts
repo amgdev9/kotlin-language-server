@@ -31,8 +31,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation("com.google.guava:guava:33.3.1-jre")
     implementation("com.h2database:h2:2.2.220")
-    implementation("com.github.amgdev9:ktfmt:63dc04e184")
     implementation("com.beust:jcommander:1.78")
     implementation("org.xerial:sqlite-jdbc:3.41.2.2")
 

@@ -15,7 +15,6 @@ import org.javacs.kt.codeaction.codeActions
 import org.javacs.kt.actions.completion.completions
 import org.javacs.kt.actions.goToDefinition
 import org.javacs.kt.actions.convertDiagnostic
-import org.javacs.kt.actions.formatting.FormattingService
 import org.javacs.kt.actions.hoverAt
 import org.javacs.kt.actions.offset
 import org.javacs.kt.actions.extractRange
@@ -52,7 +51,6 @@ class KotlinTextDocumentService(
 ) : TextDocumentService, Closeable {
     private lateinit var client: LanguageClient
     private val async = AsyncExecutor()
-    private val formattingService = FormattingService(config.formatting)
 
     var debounceLint = Debouncer(Duration.ofMillis(config.diagnostics.debounceTime))
     val lintTodo = mutableSetOf<URI>()
@@ -137,12 +135,9 @@ class KotlinTextDocumentService(
         }
     }
 
+    // Won't support formatting, use your preferred formatter instead
     override fun rangeFormatting(params: DocumentRangeFormattingParams): CompletableFuture<List<TextEdit>> = async.compute {
-        val code = extractRange(params.textDocument.content, params.range)
-        listOf(TextEdit(
-            params.range,
-            formattingService.formatKotlinCode(code, params.options)
-        ))
+        emptyList()
     }
 
     override fun codeLens(params: CodeLensParams): CompletableFuture<List<CodeLens>> {
@@ -213,12 +208,7 @@ class KotlinTextDocumentService(
     }
 
     override fun formatting(params: DocumentFormattingParams): CompletableFuture<List<TextEdit>> = async.compute {
-        val code = params.textDocument.content
-        LOG.info("Formatting {}", describeURI(params.textDocument.uri))
-        listOf(TextEdit(
-            Range(Position(0, 0), position(code, code.length)),
-            formattingService.formatKotlinCode(code, params.options)
-        ))
+        emptyList()
     }
 
     override fun didChange(params: DidChangeTextDocumentParams) {

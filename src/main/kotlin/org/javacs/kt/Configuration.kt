@@ -48,7 +48,6 @@ data class Configuration(
     val indexing: Indexing = Indexing(),
     val externalSources: ExternalSources = ExternalSources(),
     val inlayHints: InlayHints = InlayHints(),
-    val formatting: Formatting = Formatting(),
 ) {
     data class Codegen(
         /** Whether to enable code generation to a temporary build directory for Java interoperability. */
@@ -99,16 +98,4 @@ data class Configuration(
         var parameterHints: Boolean = false,
         var chainedHints: Boolean = false
     )
-    data class Formatting(
-        var formatter: String = "ktfmt",
-        var ktfmt: Ktfmt = Ktfmt()
-    ) {
-        data class Ktfmt(
-            var style: String = "google",
-            var indent: Int = 4,
-            var maxWidth: Int = 100,
-            var continuationIndent: Int = 8,
-            var removeUnusedImports: Boolean = true,
-        )
-    }
 }
