@@ -6,8 +6,6 @@ import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.javacs.kt.actions.workspaceSymbols
-import org.javacs.kt.JAVA_TO_KOTLIN_COMMAND
-import org.javacs.kt.actions.javaToKotlin.convertJavaToKotlin
 import org.javacs.kt.actions.extractRange
 import org.javacs.kt.util.filePath
 import org.javacs.kt.util.parseURI
@@ -39,23 +37,6 @@ class KotlinWorkspaceService(
     override fun executeCommand(params: ExecuteCommandParams): CompletableFuture<Any> {
         val args = params.arguments
         LOG.info("Executing command: {} with {}", params.command, params.arguments)
-
-        when (params.command) {
-            JAVA_TO_KOTLIN_COMMAND -> {
-                val fileUri = gson.fromJson(args[0] as JsonElement, String::class.java)
-                val range = gson.fromJson(args[1] as JsonElement, Range::class.java)
-
-                val selectedJavaCode = extractRange(sp.content(parseURI(fileUri)), range)
-                val kotlinCode = convertJavaToKotlin(selectedJavaCode, cp.compiler)
-
-                languageClient?.applyEdit(ApplyWorkspaceEditParams(WorkspaceEdit(listOf(Either.forLeft<TextDocumentEdit, ResourceOperation>(
-                    TextDocumentEdit(
-                        VersionedTextDocumentIdentifier().apply { uri = fileUri },
-                        listOf(TextEdit(range, kotlinCode))
-                    )
-                )))))
-            }
-        }
 
         return CompletableFuture.completedFuture(null)
     }

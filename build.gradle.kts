@@ -1,5 +1,3 @@
-val exposedVersion = "0.37.3"
-val lsp4jVersion = "0.21.2"
 
 plugins {
     kotlin("jvm") version "2.0.20"
@@ -14,8 +12,10 @@ repositories {
     mavenCentral()
     maven(url = "https://repo.gradle.org/gradle/libs-releases")
     maven(uri("$projectDir/lib"))
-    maven(url = "https://jitpack.io")
 }
+
+val exposedVersion = "0.37.3"
+val lsp4jVersion = "0.21.2"
 
 dependencies {
     implementation(kotlin("stdlib"))
@@ -33,7 +33,6 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
     implementation("com.google.guava:guava:32.0.0-jre")
     implementation("com.h2database:h2:2.2.220")
-    implementation("com.beust:jcommander:1.78")
     implementation("org.xerial:sqlite-jdbc:3.41.2.2")
 
     testImplementation(kotlin("test"))
@@ -65,10 +64,6 @@ tasks.withType<Jar> {
     from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) }) {
         exclude("META-INF/*.RSA", "META-INF/*.SF", "META-INF/*.DSA")
     }
-}
-
-tasks.withType<Tar> {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.withType<Zip> {

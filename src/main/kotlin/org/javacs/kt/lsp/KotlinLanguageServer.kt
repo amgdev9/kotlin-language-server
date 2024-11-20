@@ -16,7 +16,6 @@ import org.javacs.kt.LogMessage
 import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
 import org.javacs.kt.URIContentProvider
-import org.javacs.kt.ALL_COMMANDS
 import org.javacs.kt.DatabaseService
 import org.javacs.kt.externalsources.*
 import org.javacs.kt.getStoragePath
@@ -112,7 +111,7 @@ class KotlinLanguageServer(
             codeActionProvider = Either.forLeft(true)
             documentFormattingProvider = Either.forLeft(true)
             documentRangeFormattingProvider = Either.forLeft(true)
-            executeCommandProvider = ExecuteCommandOptions(ALL_COMMANDS)
+            executeCommandProvider = ExecuteCommandOptions()
             documentHighlightProvider = Either.forLeft(true)
         }
 

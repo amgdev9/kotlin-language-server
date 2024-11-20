@@ -6,7 +6,6 @@ import org.javacs.kt.LOG
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.KotlinLSException
 import org.javacs.kt.util.TemporaryDirectory
-import org.javacs.kt.actions.javaToKotlin.convertJavaToKotlin
 import java.io.BufferedReader
 import java.io.FileNotFoundException
 import java.nio.file.Files
@@ -50,21 +49,14 @@ class ClassContentProvider(
         return Pair(sourceUri, contents)
     }
 
-    private fun convertToKotlinIfNeeded(javaCode: String): String = if (config.autoConvertToKotlin) {
-        convertJavaToKotlin(javaCode, cp.compiler)
-    } else {
-        javaCode
-    }
-
     private fun tryReadContentOf(uri: KlsURI): Pair<String, String>? = try {
         when (uri.fileExtension) {
             "class" -> Pair(uri.extractToTemporaryFile(tempDir)
                 .let(decompiler::decompileClass)
                 .let { Files.newInputStream(it) }
                 .bufferedReader()
-                .use(BufferedReader::readText)
-                .let(this::convertToKotlinIfNeeded), if (config.autoConvertToKotlin) "kt" else "java")
-            "java" -> if (uri.source) Pair(uri.readContents(), "java") else Pair(convertToKotlinIfNeeded(uri.readContents()), "kt")
+                .use(BufferedReader::readText), "java")
+            "java" -> if (uri.source) Pair(uri.readContents(), "java") else Pair(uri.readContents(), "kt")
             else -> Pair(uri.readContents(), "kt") // e.g. for Kotlin source files
         }
     } catch (e: FileNotFoundException) { null }
