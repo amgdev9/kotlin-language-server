@@ -1,5 +1,2 @@
-- 2 failed tests, 5 ignored
-- Fix-imports-on-save, default to 'on'
-  - See https://godoc.org/golang.org/x/tools/cmd/goimports
-- Rename
-- .kts support with eval
+- Dejar solo gradle como build system soportado (y el manual)
+- Eliminar interfaz Progress
