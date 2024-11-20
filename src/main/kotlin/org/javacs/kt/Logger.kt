@@ -125,11 +125,6 @@ class Logger {
         flushErrQueue()
     }
 
-    fun connectStdioBackend() {
-        connectOutputBackend { println(it.formatted) }
-        connectOutputBackend { System.err.println(it.formatted) }
-    }
-
     private fun insertPlaceholders(msg: String, placeholders: Array<out Any?>): String {
         val msgLength = msg.length
         val lastIndex = msgLength - 1
