@@ -85,18 +85,16 @@ class RenderCompletionItem(val snippetsEnabled: Boolean) : DeclarationDescriptor
     private fun functionInsertText(desc: FunctionDescriptor): String {
         val name = escape(desc.label()!!)
 
-        return if (snippetsEnabled) {
-            val parameters = desc.valueParameters
-            val hasTrailingLambda = parameters.lastOrNull()?.type?.isFunctionType ?: false
+        if (!snippetsEnabled) return name
+        val parameters = desc.valueParameters
+        val hasTrailingLambda = parameters.lastOrNull()?.type?.isFunctionType ?: false
 
-            if (hasTrailingLambda) {
-                val parenthesizedParams = parameters.dropLast(1).ifEmpty { null }?.let { "(${valueParametersSnippet(it)})" } ?: ""
-                "$name$parenthesizedParams { \${${parameters.size}:${parameters.last().name}} }"
-            } else {
-                "$name(${valueParametersSnippet(parameters)})"
-            }
+        if (hasTrailingLambda) {
+            val parenthesizedParams =
+                parameters.dropLast(1).ifEmpty { null }?.let { "(${valueParametersSnippet(it)})" } ?: ""
+            return "$name$parenthesizedParams { \${${parameters.size}:${parameters.last().name}} }"
         } else {
-            name
+            return "$name(${valueParametersSnippet(parameters)})"
         }
     }
 

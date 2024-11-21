@@ -65,14 +65,14 @@ fun <T> nullResult(message: String): T? = noResult(message, null)
 inline fun <T> tryResolving(what: String, resolver: () -> T?): T? {
     try {
         val resolved = resolver()
-        if (resolved != null) {
-            LOG.info("Successfully resolved {} to {}", what, resolved)
-            return resolved
-        } else {
+        if (resolved == null) {
             LOG.info("Could not resolve {} as it is null", what)
+            return null
         }
+        LOG.info("Successfully resolved {} to {}", what, resolved)
+        return resolved
     } catch (e: Exception) {
         LOG.info("Could not resolve {}: {}", what, e.message)
+        return null
     }
-    return null
 }

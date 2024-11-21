@@ -1,2 +1,2 @@
-- Refactor a todo
-- Redireccionar logs a archivo temporal
+- Redireccionar logs a archivo temporal y ver por que tarda tanto en arrancar
+

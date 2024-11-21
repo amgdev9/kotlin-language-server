@@ -50,6 +50,7 @@ data class KlsURI(val fileUri: URI, val query: Map<QueryParam, String>) {
 
     val fileName: String
         get() = fileUri.toString().substringAfterLast("/")
+
     val fileExtension: String?
         get() = fileName
             .split(".")
@@ -155,11 +156,8 @@ private fun parseQuery(query: String): Map<KlsURI.QueryParam, String> =
     }.toMap()
 
 private fun getQueryParameter(property: String, value: String): Pair<KlsURI.QueryParam, String>? {
-    val queryParam: KlsURI.QueryParam? = KlsURI.QueryParam.values().find { it.parameterName == property }
+    val queryParam = KlsURI.QueryParam.entries.find { it.parameterName == property }
+    if (queryParam == null) return null
 
-    if (queryParam != null) {
-        return Pair(queryParam, value)
-    }
-
-    return null
+    return Pair(queryParam, value)
 }

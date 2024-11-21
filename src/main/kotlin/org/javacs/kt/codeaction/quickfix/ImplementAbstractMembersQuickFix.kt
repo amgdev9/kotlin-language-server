@@ -29,39 +29,48 @@ class ImplementAbstractMembersQuickFix : QuickFix {
         val startCursor = offset(file.content, range.start)
         val endCursor = offset(file.content, range.end)
         val kotlinDiagnostics = file.compile.diagnostics
-        
+
         // If the client side and the server side diagnostics contain a valid diagnostic for this range.
-        if (diagnostic != null && anyDiagnosticMatch(kotlinDiagnostics, startCursor, endCursor)) {
-            // Get the class with the missing members
-            val kotlinClass = file.parseAtPoint(startCursor)
-            if (kotlinClass is KtClass) {
-                // Get the functions that need to be implemented
-                val membersToImplement = getAbstractMembersStubs(file, kotlinClass)
+        if (diagnostic == null || !anyDiagnosticMatch(kotlinDiagnostics, startCursor, endCursor)) return emptyList()
 
-                val uri = file.parse.toPath().toUri().toString()
-                // Get the padding to be introduced before the member declarations
-                val padding = getDeclarationPadding(file, kotlinClass)
+        // Get the class with the missing members
+        val kotlinClass = file.parseAtPoint(startCursor)
+        if (kotlinClass !is KtClass) return emptyList()
 
-                // Get the location where the new code will be placed
-                val newMembersStartPosition = getNewMembersStartPosition(file, kotlinClass)
-                val bodyAppendBeginning = listOf(TextEdit(Range(newMembersStartPosition, newMembersStartPosition), "{")).takeIf { kotlinClass.hasNoBody() } ?: emptyList()
-                val bodyAppendEnd = listOf(TextEdit(Range(newMembersStartPosition, newMembersStartPosition), System.lineSeparator() + "}")).takeIf { kotlinClass.hasNoBody() } ?: emptyList()
+        // Get the functions that need to be implemented
+        val membersToImplement = getAbstractMembersStubs(file, kotlinClass)
 
-                val textEdits = bodyAppendBeginning + membersToImplement.map {
-                    // We leave two new lines before the member is inserted
-                    val newText = System.lineSeparator() + System.lineSeparator() + padding + it
-                    TextEdit(Range(newMembersStartPosition, newMembersStartPosition), newText)
-                } + bodyAppendEnd
+        val uri = file.parse.toPath().toUri().toString()
+        // Get the padding to be introduced before the member declarations
+        val padding = getDeclarationPadding(file, kotlinClass)
 
-                val codeAction = CodeAction()
-                codeAction.edit = WorkspaceEdit(mapOf(uri to textEdits))
-                codeAction.kind = CodeActionKind.QuickFix
-                codeAction.title = "Implement abstract members"
-                codeAction.diagnostics = listOf(diagnostic)
-                return listOf(Either.forRight(codeAction))
-            }
-        }
-        return listOf()
+        // Get the location where the new code will be placed
+        val newMembersStartPosition = getNewMembersStartPosition(file, kotlinClass)
+        val bodyAppendBeginning = listOf(
+            TextEdit(
+                Range(newMembersStartPosition, newMembersStartPosition),
+                "{"
+            )
+        ).takeIf { kotlinClass.hasNoBody() } ?: emptyList()
+        val bodyAppendEnd = listOf(
+            TextEdit(
+                Range(newMembersStartPosition, newMembersStartPosition),
+                System.lineSeparator() + "}"
+            )
+        ).takeIf { kotlinClass.hasNoBody() } ?: emptyList()
+
+        val textEdits = bodyAppendBeginning + membersToImplement.map {
+            // We leave two new lines before the member is inserted
+            val newText = System.lineSeparator() + System.lineSeparator() + padding + it
+            TextEdit(Range(newMembersStartPosition, newMembersStartPosition), newText)
+        } + bodyAppendEnd
+
+        val codeAction = CodeAction()
+        codeAction.edit = WorkspaceEdit(mapOf(uri to textEdits))
+        codeAction.kind = CodeActionKind.QuickFix
+        codeAction.title = "Implement abstract members"
+        codeAction.diagnostics = listOf(diagnostic)
+        return listOf(Either.forRight(codeAction))
     }
 }
 
@@ -81,7 +90,7 @@ private fun getAbstractMembersStubs(file: CompiledFile, kotlinClass: KtClass) =
         val classDescriptor = getClassDescriptor(descriptor)
         
         // If the super class is abstract or an interface
-        if (null != classDescriptor && (classDescriptor.kind.isInterface || classDescriptor.modality == Modality.ABSTRACT)) {
+        if (classDescriptor != null && (classDescriptor.kind.isInterface || classDescriptor.modality == Modality.ABSTRACT)) {
             val superClassTypeArguments = getSuperClassTypeProjections(file, it)
             classDescriptor.getMemberScope(superClassTypeArguments).getContributedDescriptors().filter { classMember ->
                (classMember is FunctionDescriptor && classMember.modality == Modality.ABSTRACT && !overridesDeclaration(kotlinClass, classMember)) || (classMember is PropertyDescriptor && classMember.modality == Modality.ABSTRACT && !overridesDeclaration(kotlinClass, classMember))

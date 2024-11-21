@@ -25,19 +25,15 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
 import java.nio.file.Path
 
 fun findReferences(file: Path, cursor: Int, sp: SourcePath): List<Location> {
-    return doFindReferences(file, cursor, sp)
-            .map { location(it) }
-            .filterNotNull()
-            .toList()
-            .sortedWith(compareBy({ it.getUri() }, { it.getRange().getStart().getLine() }))
+    return doFindReferences(file, cursor, sp).mapNotNull { location(it) }
+        .toList()
+        .sortedWith(compareBy({ it.uri }, { it.range.start.line }))
 }
 
 fun findReferences(declaration: KtNamedDeclaration, sp: SourcePath): List<Location> {
-    return doFindReferences(declaration, sp)
-        .map { location(it) }
-        .filterNotNull()
+    return doFindReferences(declaration, sp).mapNotNull { location(it) }
         .toList()
-        .sortedWith(compareBy({ it.getUri() }, { it.getRange().getStart().getLine() }))
+        .sortedWith(compareBy({ it.uri }, { it.range.start.line }))
 }
 
 private fun doFindReferences(file: Path, cursor: Int, sp: SourcePath): Collection<KtElement> {
@@ -67,20 +63,33 @@ private fun doFindReferences(element: KtNamedDeclaration, sp: SourcePath): Colle
  * @returns ranges of references in the file. Empty list if none are found
  */
 fun findReferencesToDeclarationInFile(declaration: KtNamedDeclaration, file: CompiledFile): List<Range> {
-    val descriptor = file.compile[BindingContext.DECLARATION_TO_DESCRIPTOR, declaration] ?: return emptyResult("Declaration ${declaration.fqName} has no descriptor")
+    val descriptor = file.compile[BindingContext.DECLARATION_TO_DESCRIPTOR, declaration]
+        ?: return emptyResult("Declaration ${declaration.fqName} has no descriptor")
     val bindingContext = file.compile
 
     val references = when {
-        isComponent(descriptor) -> findComponentReferences(declaration, bindingContext) + findNameReferences(declaration, bindingContext)
-        isIterator(descriptor) -> findIteratorReferences(declaration, bindingContext) + findNameReferences(declaration, bindingContext)
-        isPropertyDelegate(descriptor) -> findDelegateReferences(declaration, bindingContext) + findNameReferences(declaration, bindingContext)
+        isComponent(descriptor) -> findComponentReferences(
+            declaration,
+            bindingContext
+        ) + findNameReferences(declaration, bindingContext)
+
+        isIterator(descriptor) -> findIteratorReferences(declaration, bindingContext) + findNameReferences(
+            declaration,
+            bindingContext
+        )
+
+        isPropertyDelegate(descriptor) -> findDelegateReferences(declaration, bindingContext) + findNameReferences(
+            declaration,
+            bindingContext
+        )
+
         else -> findNameReferences(declaration, bindingContext)
     }
 
-    return references.map {
+    return references.mapNotNull {
         location(it)?.range
-    }.filterNotNull()
-     .sortedWith(compareBy({ it.start.line }))
+    }
+        .sortedWith(compareBy { it.start.line })
 }
 
 private fun findNameReferences(element: KtNamedDeclaration, recompile: BindingContext): List<KtReferenceExpression> {
@@ -146,8 +155,8 @@ private fun isPropertyDelegate(declaration: DeclarationDescriptor) =
         declaration.isOperator &&
         (declaration.name == OperatorNameConventions.GET_VALUE || declaration.name == OperatorNameConventions.SET_VALUE)
 
-private fun hasPropertyDelegates(sp: SourcePath): Set<KtFile> =
-        sp.all().filter(::hasPropertyDelegate).toSet()
+private fun hasPropertyDelegates(sourcePath: SourcePath): Set<KtFile> =
+        sourcePath.all().filter(::hasPropertyDelegate).toSet()
 
 fun hasPropertyDelegate(source: KtFile): Boolean =
         source.preOrderTraversal().filterIsInstance<KtPropertyDelegate>().any()
@@ -157,8 +166,8 @@ private fun isIterator(declaration: DeclarationDescriptor) =
         declaration.isOperator &&
         declaration.name == OperatorNameConventions.ITERATOR
 
-private fun hasForLoops(sp: SourcePath): Set<KtFile> =
-        sp.all().filter(::hasForLoop).toSet()
+private fun hasForLoops(sourcePath: SourcePath): Set<KtFile> =
+        sourcePath.all().filter(::hasForLoop).toSet()
 
 private fun hasForLoop(source: KtFile): Boolean =
         source.preOrderTraversal().filterIsInstance<KtForExpression>().any()
@@ -168,14 +177,14 @@ private fun isGetSet(declaration: DeclarationDescriptor) =
         declaration.isOperator &&
         (declaration.name == OperatorNameConventions.GET || declaration.name == OperatorNameConventions.SET)
 
-private fun possibleGetSets(sp: SourcePath): Set<KtFile> =
-        sp.all().filter(::possibleGetSet).toSet()
+private fun possibleGetSets(sourcePath: SourcePath): Set<KtFile> =
+        sourcePath.all().filter(::possibleGetSet).toSet()
 
 private fun possibleGetSet(source: KtFile) =
         source.preOrderTraversal().filterIsInstance<KtArrayAccessExpression>().any()
 
-private fun possibleInvokeReferences(declaration: FunctionDescriptor, sp: SourcePath) =
-        sp.all().filter { possibleInvokeReference(declaration, it) }.toSet()
+private fun possibleInvokeReferences(declaration: FunctionDescriptor, sourcePath: SourcePath) =
+        sourcePath.all().filter { possibleInvokeReference(declaration, it) }.toSet()
 
 // TODO this is not very selective
 private fun possibleInvokeReference(@Suppress("UNUSED_PARAMETER") declaration: FunctionDescriptor, source: KtFile): Boolean =
@@ -211,10 +220,10 @@ private fun possibleNameReference(declaration: Name, source: KtFile): Boolean =
                 .any { it.getReferencedNameAsName() == declaration }
 
 private fun matchesReference(found: DeclarationDescriptor, search: KtNamedDeclaration): Boolean {
-    if (found is ConstructorDescriptor && found.isPrimary)
-        return search is KtClass && found.constructedClass.fqNameSafe == search.fqName
+    return if (found is ConstructorDescriptor && found.isPrimary)
+        search is KtClass && found.constructedClass.fqNameSafe == search.fqName
     else
-        return found.findPsi() == search
+        found.findPsi() == search
 }
 
 private fun operatorNames(name: Name): List<KtSingleValueToken> =

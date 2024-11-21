@@ -2,18 +2,16 @@ package org.javacs.kt.util
 
 import org.javacs.kt.LOG
 import java.time.Duration
-import java.util.function.Supplier
-import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 private var threadCount = 0
 
 class Debouncer(
-    private val delay: Duration,
+    delay: Duration,
     private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(1) {
         Thread(it, "debounce${threadCount++}")
     }

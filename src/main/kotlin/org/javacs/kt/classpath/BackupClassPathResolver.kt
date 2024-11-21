@@ -22,8 +22,7 @@ fun findKotlinStdlib(): Path? =
     ?: findAlternativeLibraryLocation("kotlin-stdlib")
 
 private fun findLocalArtifact(group: String, artifact: String) =
-    tryResolving("$artifact using Maven") { tryFindingLocalArtifactUsing(group, artifact, findLocalArtifactDirUsingMaven(group, artifact)) }
-    ?: tryResolving("$artifact using Gradle") { tryFindingLocalArtifactUsing(group, artifact, findLocalArtifactDirUsingGradle(group, artifact)) }
+    tryResolving("$artifact using Gradle") { tryFindingLocalArtifactUsing(group, artifact, findLocalArtifactDirUsingGradle(group, artifact)) }
 
 private fun tryFindingLocalArtifactUsing(@Suppress("UNUSED_PARAMETER") group: String, artifact: String, artifactDirResolution: LocalArtifactDirectoryResolution): Path? {
     val isCorrectArtifact = BiPredicate<Path, BasicFileAttributes> { file, _ ->
@@ -74,27 +73,18 @@ private fun findKotlinCliCompilerLibrary(name: String): Path? =
             LOG.info("Found Kotlin CLI compiler library $name at $it")
         }
 
-
 // alternative library locations like for snap
-// (can probably just use elvis operator and multiple similar expressions for other install directories)
 private fun findAlternativeLibraryLocation(name: String): Path? =
     Paths.get("/snap/kotlin/current/lib/${name}.jar").existsOrNull()
 
 private fun Path.existsOrNull() =
     if (Files.exists(this)) this else null
 
-private fun findLocalArtifactDirUsingMaven(group: String, artifact: String) =
-    LocalArtifactDirectoryResolution(mavenRepository
-        ?.resolve(group.replace('.', File.separatorChar))
-        ?.resolve(artifact)
-        ?.existsOrNull(), "Maven")
-
 private fun findLocalArtifactDirUsingGradle(group: String, artifact: String) =
     LocalArtifactDirectoryResolution(gradleCaches
         ?.resolve(group)
         ?.resolve(artifact)
         ?.existsOrNull(), "Gradle")
-
 
 // TODO: Resolve the gradleCaches dynamically instead of hardcoding this path
 private val gradleCaches by lazy {

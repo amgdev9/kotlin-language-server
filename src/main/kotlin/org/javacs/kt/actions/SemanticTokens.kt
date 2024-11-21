@@ -28,6 +28,7 @@ import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiLiteralExpression
 import com.intellij.psi.PsiType
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiTypes
 
 enum class SemanticTokenType(val typeName: String) {
     KEYWORD(SemanticTokenTypes.Keyword),
@@ -182,9 +183,9 @@ private fun elementToken(element: PsiElement, bindingContext: BindingContext): S
             SemanticToken(elementRange, SemanticTokenType.INTERPOLATION_ENTRY)
         is PsiLiteralExpression -> {
             val tokenType = when (element.type) {
-                PsiType.INT, PsiType.LONG, PsiType.DOUBLE -> SemanticTokenType.NUMBER
-                PsiType.CHAR -> SemanticTokenType.STRING
-                PsiType.BOOLEAN, PsiType.NULL -> SemanticTokenType.KEYWORD
+                PsiTypes.intType(), PsiTypes.longType(), PsiTypes.doubleType() -> SemanticTokenType.NUMBER
+                PsiTypes.charType() -> SemanticTokenType.STRING
+                PsiTypes.booleanType(), PsiTypes.nullType() -> SemanticTokenType.KEYWORD
                 else -> return null
             }
             SemanticToken(elementRange, tokenType)

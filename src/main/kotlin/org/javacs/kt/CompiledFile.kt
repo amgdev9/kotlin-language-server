@@ -51,10 +51,9 @@ class CompiledFile(
 
     private fun expandForType(cursor: Int, surroundingExpr: KtExpression): KtExpression {
         val dotParent = surroundingExpr.parent as? KtDotQualifiedExpression
-        if (dotParent != null && dotParent.selectorExpression?.textRange?.contains(cursor) ?: false) {
-            return expandForType(cursor, dotParent)
-        }
-        else return surroundingExpr
+        return if (dotParent != null && dotParent.selectorExpression?.textRange?.contains(cursor) == true) {
+            expandForType(cursor, dotParent)
+        } else surroundingExpr
     }
 
     /**

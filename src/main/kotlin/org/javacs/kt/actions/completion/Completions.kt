@@ -138,7 +138,7 @@ private fun indexCompletionItems(file: CompiledFile, cursor: Int, element: KtEle
                 Symbol.Kind.UNKNOWN -> CompletionItemKind.Text
             }
             detail = "(import from ${it.fqName.parent()})"
-            additionalTextEdits = listOf(getImportTextEditEntry(parsedFile, it.fqName)) // TODO: CRLF?
+            additionalTextEdits = listOf(getImportTextEditEntry(parsedFile, it.fqName))
         } }
 }
 
@@ -217,17 +217,17 @@ private fun extractPropertyName(d: DeclarationDescriptor): String {
     return upper[0].lowercaseChar() + upper.substring(1)
 }
 
-private fun isGetter(d: DeclarationDescriptor): Boolean =
-        d is CallableDescriptor &&
-        !d.name.isSpecial &&
-        d.name.identifier.matches(Regex("(get|is)[A-Z]\\w+")) &&
-        d.valueParameters.isEmpty()
+private fun isGetter(decl: DeclarationDescriptor): Boolean =
+        decl is CallableDescriptor &&
+        !decl.name.isSpecial &&
+        decl.name.identifier.matches(Regex("(get|is)[A-Z]\\w+")) &&
+        decl.valueParameters.isEmpty()
 
-private fun isSetter(d: DeclarationDescriptor): Boolean =
-        d is CallableDescriptor &&
-        !d.name.isSpecial &&
-        d.name.identifier.matches(Regex("set[A-Z]\\w+")) &&
-        d.valueParameters.size == 1
+private fun isSetter(decl: DeclarationDescriptor): Boolean =
+        decl is CallableDescriptor &&
+        !decl.name.isSpecial &&
+        decl.name.identifier.matches(Regex("set[A-Z]\\w+")) &&
+        decl.valueParameters.size == 1
 
 private fun isGlobalCall(el: KtElement) = el is KtBlockExpression || el is KtClassBody || el.parent is KtBinaryExpression
 
@@ -280,7 +280,6 @@ private fun completableElement(file: CompiledFile, cursor: Int): Pair<KtElement,
     }
 }
 
-@Suppress("LongMethod", "ReturnCount", "CyclomaticComplexMethod")
 private fun elementCompletions(file: CompiledFile, cursor: Int, surroundingElement: KtElement, infixCall: Boolean): Sequence<DeclarationDescriptor> {
     return when (surroundingElement) {
         // import x.y.?
@@ -411,7 +410,6 @@ private fun ClassDescriptor.getDescriptors(): Sequence<DeclarationDescriptor> {
     val companionDescriptors = if (hasCompanionObject && companionObjectDescriptor != null) companionObjectDescriptor!!.getDescriptors() else emptySequence()
 
     return (statics + classes + types + companionDescriptors).toSet().asSequence()
-
 }
 
 private fun declarationIsInfix(declaration: DeclarationDescriptor): Boolean {
@@ -422,9 +420,8 @@ private fun declarationIsInfix(declaration: DeclarationDescriptor): Boolean {
 private fun isCompanionOfEnum(kotlinType: KotlinType): Boolean {
     val classDescriptor = TypeUtils.getClassDescriptor(kotlinType)
     val isCompanion = DescriptorUtils.isCompanionObject(classDescriptor)
-    if (!isCompanion) {
-        return false
-    }
+    if (!isCompanion) return false
+
     return DescriptorUtils.isEnumClass(classDescriptor?.containingDeclaration)
 }
 
@@ -441,8 +438,8 @@ private fun isCompanionOfSealed(kotlinType: KotlinType): Boolean {
 private fun findPartialIdentifier(file: CompiledFile, cursor: Int): String {
     val line = file.lineBefore(cursor)
     if (line.matches(Regex(".*\\."))) return ""
-    else if (line.matches(Regex(".*\\.\\w+"))) return line.substringAfterLast(".")
-    else return Regex("\\w+").findAll(line).lastOrNull()?.value ?: ""
+    if (line.matches(Regex(".*\\.\\w+"))) return line.substringAfterLast(".")
+    return Regex("\\w+").findAll(line).lastOrNull()?.value ?: ""
 }
 
 fun memberOverloads(type: KotlinType, identifier: String): Sequence<CallableDescriptor> {
@@ -453,9 +450,6 @@ fun memberOverloads(type: KotlinType, identifier: String): Sequence<CallableDesc
             .filterIsInstance<CallableDescriptor>()
             .filter(nameFilter)
 }
-
-private fun completeTypeMembers(type: KotlinType): Sequence<DeclarationDescriptor> =
-    type.memberScope.getDescriptorsFiltered(TYPES_FILTER).asSequence()
 
 private fun scopeChainTypes(scope: LexicalScope): Sequence<DeclarationDescriptor> =
         scope.parentsWithSelf.flatMap(::scopeTypes)
@@ -469,8 +463,8 @@ fun identifierOverloads(scope: LexicalScope, identifier: String): Sequence<Calla
     val nameFilter = equalsIdentifier(identifier)
 
     return identifiers(scope)
-            .filterIsInstance<CallableDescriptor>()
-            .filter(nameFilter)
+        .filterIsInstance<CallableDescriptor>()
+        .filter(nameFilter)
 }
 
 private fun extensionFunctions(scope: LexicalScope): Sequence<CallableDescriptor> =
@@ -512,11 +506,9 @@ private fun implicitMembers(scope: HierarchicalScope): Sequence<DeclarationDescr
 private fun equalsIdentifier(identifier: String): (DeclarationDescriptor) -> Boolean =
     { name(it) == identifier }
 
-private fun name(d: DeclarationDescriptor): String {
-    if (d is ConstructorDescriptor)
-        return d.constructedClass.name.identifier
-    else
-        return d.name.identifier
+private fun name(decl: DeclarationDescriptor): String {
+    if (decl is ConstructorDescriptor) return decl.constructedClass.name.identifier
+    return decl.name.identifier
 }
 
 private fun isVisible(file: CompiledFile, cursor: Int): (DeclarationDescriptor) -> Boolean {
@@ -543,17 +535,17 @@ private fun isDeclarationVisible(target: DeclarationDescriptor, from: Declaratio
             .none { isNotVisible(it, from) }
 
 private fun isNotVisible(target: DeclarationDescriptorWithVisibility, from: DeclarationDescriptor): Boolean {
-    when (target.visibility.delegate) {
+    return when (target.visibility.delegate) {
         Visibilities.Private, Visibilities.PrivateToThis -> {
             if (DescriptorUtils.isTopLevelDeclaration(target))
-                return !sameFile(target, from)
+                !sameFile(target, from)
             else
-                return !sameParent(target, from)
+                !sameParent(target, from)
         }
         Visibilities.Protected -> {
-            return !subclassParent(target, from)
+            !subclassParent(target, from)
         }
-        else -> return false
+        else -> false
     }
 }
 
@@ -562,7 +554,7 @@ private fun sameFile(target: DeclarationDescriptor, from: DeclarationDescriptor)
     val fromFile = DescriptorUtils.getContainingSourceFile(from)
 
     if (targetFile == SourceFile.NO_SOURCE_FILE || fromFile == SourceFile.NO_SOURCE_FILE) return true
-    else return targetFile.name == fromFile.name
+    return targetFile.name == fromFile.name
 }
 
 private fun sameParent(target: DeclarationDescriptor, from: DeclarationDescriptor): Boolean {
@@ -577,7 +569,7 @@ private fun subclassParent(target: DeclarationDescriptor, from: DeclarationDescr
     val fromParents = from.parentsWithSelf.mapNotNull(::isParentClass).toList()
 
     if (fromParents.isEmpty()) return true
-    else return fromParents.any { DescriptorUtils.isSubclass(it, targetParent) }
+    return fromParents.any { DescriptorUtils.isSubclass(it, targetParent) }
 }
 
 private fun isParentClass(declaration: DeclarationDescriptor): ClassDescriptor? =
@@ -599,7 +591,7 @@ private val loggedHidden = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUni
 private fun logHidden(target: DeclarationDescriptor, from: DeclarationDescriptor) {
     val key = Pair(from.name, target.name)
 
-    loggedHidden.get(key, { doLogHidden(target, from )})
+    loggedHidden.get(key) { doLogHidden(target, from) }
 }
 
 private fun doLogHidden(target: DeclarationDescriptor, from: DeclarationDescriptor) {
@@ -623,10 +615,4 @@ private fun doesntLookLikePackage(packageDirective: KtPackageDirective): Sequenc
     LOG.debug("{} doesn't look like package a.b...", packageDirective.text)
 
     return emptySequence()
-}
-
-private fun empty(message: String): CompletionList {
-    LOG.debug(message)
-
-    return CompletionList(true, emptyList())
 }

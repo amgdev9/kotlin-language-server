@@ -8,7 +8,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.javacs.kt.CompiledFile
 import org.javacs.kt.index.SymbolIndex
 import org.javacs.kt.util.isSubrangeOf
-import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
 import org.jetbrains.kotlin.diagnostics.Diagnostic as KotlinDiagnostic
 
 interface QuickFix {

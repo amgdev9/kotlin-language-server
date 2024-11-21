@@ -84,15 +84,15 @@ private fun renderTypeOf(element: KtExpression, bindingContext: BindingContext):
         }
     }
 
-    val expressionType = bindingContext[BindingContext.EXPRESSION_TYPE_INFO, element]?.type ?: element.getType(bindingContext)
+    val expressionType =
+        bindingContext[BindingContext.EXPRESSION_TYPE_INFO, element]?.type ?: element.getType(bindingContext)
     val result = expressionType?.let { TYPE_RENDERER.renderType(it) } ?: return null
 
     val smartCast = bindingContext[BindingContext.SMARTCAST, element]
-    if (smartCast != null && element is KtReferenceExpression) {
-        val declaredType = (bindingContext[BindingContext.REFERENCE_TARGET, element] as? CallableDescriptor)?.returnType
-        if (declaredType != null) {
-            return result + " (smart cast from " + TYPE_RENDERER.renderType(declaredType) + ")"
-        }
-    }
-    return result
+    if (smartCast == null || element !is KtReferenceExpression) return result
+
+    val declaredType = (bindingContext[BindingContext.REFERENCE_TARGET, element] as? CallableDescriptor)?.returnType
+    if (declaredType == null) return result
+
+    return result + " (smart cast from " + TYPE_RENDERER.renderType(declaredType) + ")"
 }

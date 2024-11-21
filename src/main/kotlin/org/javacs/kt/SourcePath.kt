@@ -18,7 +18,7 @@ import java.net.URI
 import java.util.concurrent.locks.ReentrantLock
 
 class SourcePath(
-    private val cp: CompilerClassPath,
+    private val classPath: CompilerClassPath,
     private val contentProvider: URIContentProvider,
     private val indexingConfig: Configuration.Indexing,
     databaseService: DatabaseService
@@ -69,7 +69,7 @@ class SourcePath(
 
         fun parse() {
             // TODO: Create PsiFile using the stored language instead
-            parsed = cp.compiler.createKtFile(content, path ?: Paths.get("sourceFile.virtual.$extension"), kind)
+            parsed = classPath.compiler.createKtFile(content, path ?: Paths.get("sourceFile.virtual.$extension"), kind)
         }
 
         fun parseIfChanged() {
@@ -95,7 +95,7 @@ class SourcePath(
 
             val oldFile = clone()
 
-            val (context, module) = cp.compiler.compileKtFile(parsed!!, allIncludingThis(), kind)
+            val (context, module) = classPath.compiler.compileKtFile(parsed!!, allIncludingThis(), kind)
             parseDataWriteLock.withLock {
                 compiledContext = context
                 this.module = module
@@ -115,7 +115,7 @@ class SourcePath(
                 parseIfChanged().apply { compileIfNull() }.let { doPrepareCompiledFile() }
 
         private fun doPrepareCompiledFile(): CompiledFile =
-                CompiledFile(content, compiledFile!!, compiledContext!!, module!!, allIncludingThis(), cp, isScript, kind)
+                CompiledFile(content, compiledFile!!, compiledContext!!, module!!, allIncludingThis(), classPath, isScript, kind)
 
         private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
             if (isTemporary) (all().asSequence() + sequenceOf(parsed!!)).toList()
@@ -162,7 +162,7 @@ class SourcePath(
     fun delete(uri: URI) {
         files[uri]?.let {
             refreshWorkspaceIndexes(listOf(it), listOf())
-            cp.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
+            classPath.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
         }
 
         files.remove(uri)
@@ -215,7 +215,7 @@ class SourcePath(
             // Get all the files. This will parse them if they changed
             val allFiles = all()
             beforeCompileCallback.invoke()
-            val (context, module) = cp.compiler.compileKtFiles(parse.values, allFiles, kind)
+            val (context, module) = classPath.compiler.compileKtFiles(parse.values, allFiles, kind)
 
             // Update cache
             for ((f, parsed) in parse) {
@@ -242,7 +242,7 @@ class SourcePath(
 
         // Combine with past compilations
         val same = sources - allChanged
-        val combined = listOf(buildScriptsContext, sourcesContext).filterNotNull() + same.map { it.compiledContext!! }
+        val combined = listOfNotNull(buildScriptsContext, sourcesContext) + same.map { it.compiledContext!! }
 
         return CompositeBindingContext.create(combined)
     }
@@ -268,10 +268,10 @@ class SourcePath(
             if (!it.isScript) {
                 // If the code generation fails for some reason, we generate code for the other files anyway
                 try {
-                    cp.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
+                    classPath.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
                     it.module?.let { module ->
                         it.compiledContext?.let { context ->
-                            cp.compiler.generateCode(module, context, listOfNotNull(it.compiledFile))
+                            classPath.compiler.generateCode(module, context, listOfNotNull(it.compiledFile))
                             it.lastSavedFile = it.compiledFile
                         }
                     }
@@ -299,23 +299,24 @@ class SourcePath(
      * Refreshes the indexes. If already done, refreshes only the declarations in the files that were changed.
      */
     private fun refreshWorkspaceIndexes(oldFiles: List<SourceFile>, newFiles: List<SourceFile>) = indexAsync.execute {
-        if (indexEnabled) {
-            val oldDeclarations = getDeclarationDescriptors(oldFiles)
-            val newDeclarations = getDeclarationDescriptors(newFiles)
+        if (!indexEnabled) return@execute
 
-            // Index the new declarations in the Kotlin source files that were just compiled, removing the old ones
-            index.updateIndexes(oldDeclarations, newDeclarations)
-        }
+        val oldDeclarations = getDeclarationDescriptors(oldFiles)
+        val newDeclarations = getDeclarationDescriptors(newFiles)
+
+        // Index the new declarations in the Kotlin source files that were just compiled, removing the old ones
+        index.updateIndexes(oldDeclarations, newDeclarations)
     }
 
     /**
      * Refreshes the indexes. If already done, refreshes only the declarations in the files that were changed.
      */
     private fun refreshDependencyIndexes(module: ModuleDescriptor) = indexAsync.execute {
-        if (indexEnabled) {
-            val declarations = getDeclarationDescriptors(files.values)
-            index.refresh(module, declarations)
-        }
+        if (!indexEnabled) return@execute
+
+        val declarations = getDeclarationDescriptors(files.values)
+        index.refresh(module, declarations)
+
     }
 
     // Gets all the declaration descriptors for the collection of files
@@ -337,11 +338,12 @@ class SourcePath(
      */
     fun refresh() {
         val initialized = files.values.any { it.parsed != null }
-        if (initialized) {
-            LOG.info("Refreshing source path")
-            files.values.forEach { it.clean() }
-            files.values.forEach { it.compile() }
-        }
+        if (!initialized) return
+
+        LOG.info("Refreshing source path")
+        files.values.forEach { it.clean() }
+        files.values.forEach { it.compile() }
+
     }
 
     /**

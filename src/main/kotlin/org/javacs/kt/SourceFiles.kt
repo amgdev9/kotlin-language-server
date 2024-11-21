@@ -116,16 +116,15 @@ class SourceFiles(
     }
 
     fun deletedOnDisk(uri: URI) {
-        if (isSource(uri)) {
-            files.remove(uri)
-        }
+        if (!isSource(uri)) return
+        files.remove(uri)
+
     }
 
     fun changedOnDisk(uri: URI) {
-        if (isSource(uri)) {
-            files[uri] = readFromDisk(uri, files[uri]?.isTemporary == true)
-                ?: throw RuntimeException("Could not read source file '$uri' after being changed on disk")
-        }
+        if (!isSource(uri)) return
+        files[uri] = readFromDisk(uri, files[uri]?.isTemporary == true)
+            ?: throw RuntimeException("Could not read source file '$uri' after being changed on disk")
     }
 
     private fun readFromDisk(uri: URI, temporary: Boolean): SourceVersion? = try {

@@ -55,25 +55,25 @@ private fun pickImportantElements(node: PsiElement, includeLocals: Boolean): KtN
             else -> null
         }
 
-private fun workspaceSymbol(d: KtNamedDeclaration): WorkspaceSymbol? {
-    val name = d.name ?: return null
+private fun workspaceSymbol(decl: KtNamedDeclaration): WorkspaceSymbol? {
+    val name = decl.name ?: return null
 
-    return WorkspaceSymbol(name, symbolKind(d), Either.forRight(workspaceLocation(d)), symbolContainer(d))
+    return WorkspaceSymbol(name, symbolKind(decl), Either.forRight(workspaceLocation(decl)), symbolContainer(decl))
 }
 
-private fun symbolKind(d: KtNamedDeclaration): SymbolKind =
-        when (d) {
+private fun symbolKind(decl: KtNamedDeclaration): SymbolKind =
+        when (decl) {
             is KtClassOrObject -> SymbolKind.Class
             is KtTypeAlias -> SymbolKind.Interface
             is KtConstructor<*> -> SymbolKind.Constructor
             is KtNamedFunction -> SymbolKind.Function
             is KtProperty -> SymbolKind.Property
             is KtVariableDeclaration -> SymbolKind.Variable
-            else -> throw IllegalArgumentException("Unexpected symbol $d")
+            else -> throw IllegalArgumentException("Unexpected symbol $decl")
         }
 
-private fun workspaceLocation(d: KtNamedDeclaration): WorkspaceSymbolLocation {
-    val file = d.containingFile
+private fun workspaceLocation(decl: KtNamedDeclaration): WorkspaceSymbolLocation {
+    val file = decl.containingFile
     val uri = file.toPath().toUri().toString()
 
     return WorkspaceSymbolLocation(uri)

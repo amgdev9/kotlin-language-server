@@ -1,5 +1,3 @@
-import org.gradle.internal.classpath.ClassPath
-
 allprojects { project ->
     task kotlinLSPKotlinDSLDeps {
         // def pattern = ~/^(?:gradle-(?:kotlin-dsl|base-services|plugins|core)|kotlin-(?:compiler|stdlib)).*\.jar/

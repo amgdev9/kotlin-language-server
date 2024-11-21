@@ -10,7 +10,6 @@ import org.javacs.kt.util.filePath
 import org.javacs.kt.util.parseURI
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
-import com.google.gson.Gson
 import com.google.gson.JsonObject
 import org.javacs.kt.CompilerClassPath
 import org.javacs.kt.Configuration
@@ -19,21 +18,19 @@ import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
 
 class KotlinWorkspaceService(
-    private val sf: SourceFiles,
-    private val sp: SourcePath,
-    private val cp: CompilerClassPath,
-    private val docService: KotlinTextDocumentService,
+    private val sourceFiles: SourceFiles,
+    private val sourcePath: SourcePath,
+    private val classPath: CompilerClassPath,
+    private val textDocService: KotlinTextDocumentService,
     private val config: Configuration
 ) : WorkspaceService, LanguageClientAware {
-    private val gson = Gson()
     private var languageClient: LanguageClient? = null
 
-    override fun connect(client: LanguageClient): Unit {
+    override fun connect(client: LanguageClient) {
         languageClient = client
     }
 
     override fun executeCommand(params: ExecuteCommandParams): CompletableFuture<Any> {
-        val args = params.arguments
         LOG.info("Executing command: {} with {}", params.command, params.arguments)
 
         return CompletableFuture.completedFuture(null)
@@ -46,19 +43,16 @@ class KotlinWorkspaceService(
 
             when (change.type) {
                 FileChangeType.Created -> {
-                    sf.createdOnDisk(uri)
-                    path?.let(cp::createdOnDisk)?.let { if (it) sp.refresh() }
+                    sourceFiles.createdOnDisk(uri)
+                    path?.let(classPath::createdOnDisk)?.let { if (it) sourcePath.refresh() }
                 }
                 FileChangeType.Deleted -> {
-                    sf.deletedOnDisk(uri)
-                    path?.let(cp::deletedOnDisk)?.let { if (it) sp.refresh() }
+                    sourceFiles.deletedOnDisk(uri)
+                    path?.let(classPath::deletedOnDisk)?.let { if (it) sourcePath.refresh() }
                 }
                 FileChangeType.Changed -> {
-                    sf.changedOnDisk(uri)
-                    path?.let(cp::changedOnDisk)?.let { if (it) sp.refresh() }
-                }
-                null -> {
-                    // Nothing to do
+                    sourceFiles.changedOnDisk(uri)
+                    path?.let(classPath::changedOnDisk)?.let { if (it) sourcePath.refresh() }
                 }
             }
         }
@@ -70,7 +64,7 @@ class KotlinWorkspaceService(
             // Update deprecated configuration keys
             get("debounceTime")?.asLong?.let {
                 config.diagnostics.debounceTime = it
-                docService.updateDebouncer()
+                textDocService.updateDebouncer()
             }
             get("snippetsEnabled")?.asBoolean?.let { config.completion.snippets.enabled = it }
 
@@ -81,7 +75,7 @@ class KotlinWorkspaceService(
                     val jvm = compiler.jvm
                     get("target")?.asString?.let {
                         jvm.target = it
-                        cp.updateCompilerConfiguration()
+                        classPath.updateCompilerConfiguration()
                     }
                 }
             }
@@ -113,7 +107,7 @@ class KotlinWorkspaceService(
                     }
                     get("debounceTime")?.asLong?.let {
                         diagnostics.debounceTime = it
-                        docService.updateDebouncer()
+                        textDocService.updateDebouncer()
                     }
                 }
             }
@@ -123,7 +117,7 @@ class KotlinWorkspaceService(
                 val scripts = config.scripts
                 get("enabled")?.asBoolean?.let { scripts.enabled = it }
                 get("buildScriptsEnabled")?.asBoolean?.let { scripts.buildScriptsEnabled = it }
-                sf.updateExclusions()
+                sourceFiles.updateExclusions()
             }
 
             // Update code generation options
@@ -153,16 +147,14 @@ class KotlinWorkspaceService(
             get("externalSources")?.asJsonObject?.apply {
                 val externalSources = config.externalSources
                 get("useKlsScheme")?.asBoolean?.let { externalSources.useKlsScheme = it }
-                get("autoConvertToKotlin")?.asBoolean?.let { externalSources.autoConvertToKotlin = it }
             }
         }
 
         LOG.info("Updated configuration: {}", settings)
     }
 
-    @Suppress("DEPRECATION")
     override fun symbol(params: WorkspaceSymbolParams): CompletableFuture<Either<List<SymbolInformation>, List<WorkspaceSymbol>>> {
-        val result = workspaceSymbols(params.query, sp)
+        val result = workspaceSymbols(params.query, sourcePath)
 
         return CompletableFuture.completedFuture(Either.forRight(result))
     }
@@ -173,21 +165,22 @@ class KotlinWorkspaceService(
 
             val root = Paths.get(parseURI(change.uri))
 
-            sf.removeWorkspaceRoot(root)
-            val refreshed = cp.removeWorkspaceRoot(root)
+            sourceFiles.removeWorkspaceRoot(root)
+            val refreshed = classPath.removeWorkspaceRoot(root)
             if (refreshed) {
-                sp.refresh()
+                sourcePath.refresh()
             }
         }
+
         for (change in params.event.added) {
             LOG.info("Adding workspace {} to source path", change.uri)
 
             val root = Paths.get(parseURI(change.uri))
 
-            sf.addWorkspaceRoot(root)
-            val refreshed = cp.addWorkspaceRoot(root)
+            sourceFiles.addWorkspaceRoot(root)
+            val refreshed = classPath.addWorkspaceRoot(root)
             if (refreshed) {
-                sp.refresh()
+                sourcePath.refresh()
             }
         }
     }

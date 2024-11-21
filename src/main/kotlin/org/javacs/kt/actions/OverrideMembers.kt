@@ -34,12 +34,9 @@ private const val DEFAULT_TAB_SIZE = 4
 
 fun listOverridableMembers(file: CompiledFile, cursor: Int): List<CodeAction> {
     val kotlinClass = file.parseAtPoint(cursor)
+    if (kotlinClass !is KtClass) return emptyList()
 
-    if (kotlinClass is KtClass) {
-        return createOverrideAlternatives(file, kotlinClass)
-    }
-
-    return emptyList()
+    return createOverrideAlternatives(file, kotlinClass)
 }
 
 private fun createOverrideAlternatives(file: CompiledFile, kotlinClass: KtClass): List<CodeAction> {
@@ -54,15 +51,16 @@ private fun createOverrideAlternatives(file: CompiledFile, kotlinClass: KtClass)
     // Get the location where the new code will be placed
     val newMembersStartPosition = getNewMembersStartPosition(file, kotlinClass)
     
-    // loop through the memberstoimplement and create code actions
+    // loop and create code actions
     return membersToImplement.map { member ->
         val newText = System.lineSeparator() + System.lineSeparator() + padding + member
         val textEdit = TextEdit(Range(newMembersStartPosition, newMembersStartPosition), newText)
 
         val codeAction = CodeAction()
-        codeAction.edit = WorkspaceEdit(mapOf(uri to listOf(textEdit)))
-        codeAction.title = member
-
+        with(codeAction) {
+            edit = WorkspaceEdit(mapOf(uri to listOf(textEdit)))
+            title = member
+        }
         codeAction
     }
 }
@@ -80,7 +78,7 @@ private fun getUnimplementedMembersStubs(file: CompiledFile, kotlinClass: KtClas
             val classDescriptor = getClassDescriptor(descriptor)
 
             // If the super class is abstract, interface or just plain open
-            if (null != classDescriptor && classDescriptor.canBeExtended()) {
+            if (classDescriptor != null && classDescriptor.canBeExtended()) {
                 val superClassTypeArguments = getSuperClassTypeProjections(file, it)
                 classDescriptor
                     .getMemberScope(superClassTypeArguments)
@@ -220,7 +218,7 @@ fun createVariableStub(variable: PropertyDescriptor): String {
 // about types: regular Kotlin types are marked T or T?, but types from Java are (T..T?) because
 // nullability cannot be decided.
 // Therefore, we have to unpack in case we have the Java type. Fortunately, the Java types are not
-// marked nullable, so we default to non nullable types. Let the user decide if they want nullable
+// marked nullable, so we default to non-nullable types. Let the user decide if they want nullable
 // types instead. With this implementation Kotlin types also keeps their nullability
 private fun KotlinType.unwrappedType(): KotlinType =
         this.unwrap().makeNullableAsSpecified(this.isMarkedNullable)

@@ -7,6 +7,11 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import org.javacs.kt.util.userHome
+
+private fun createPathOrNull(envVar: String): Path? = System.getenv(envVar)?.let(Paths::get)
+
+internal val gradleHome = createPathOrNull("GRADLE_USER_HOME") ?: userHome.resolve(".gradle")
 
 internal class GradleClassPathResolver(private val path: Path, private val includeKotlinDSL: Boolean): ClassPathResolver {
     override val resolverType: String = "Gradle"

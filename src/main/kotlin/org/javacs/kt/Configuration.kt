@@ -89,9 +89,7 @@ data class Configuration(
     )
     data class ExternalSources(
         /** Whether kls-URIs should be sent to the client to describe classes in JARs. */
-        var useKlsScheme: Boolean = false,
-        /** Whether external classes should be automatically converted to Kotlin. */
-        var autoConvertToKotlin: Boolean = false
+        var useKlsScheme: Boolean = false
     )
     data class InlayHints(
         var typeHints: Boolean = false,

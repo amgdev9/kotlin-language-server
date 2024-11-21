@@ -101,7 +101,7 @@ private class CompilationEnvironment(
 
             put(CommonConfigurationKeys.MODULE_NAME, JvmProtoBufUtil.DEFAULT_MODULE_NAME)
             put(CommonConfigurationKeys.LANGUAGE_VERSION_SETTINGS, languageVersionSettings)
-            put(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY, LoggingMessageCollector)
+            put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, LoggingMessageCollector)
             add(ComponentRegistrar.PLUGIN_COMPONENT_REGISTRARS, ScriptingCompilerConfigurationComponentRegistrar())
             put(JVMConfigurationKeys.USE_PSI_CLASS_FILES_READING, true)
 
@@ -516,7 +516,7 @@ class Compiler(
 
     fun compileKtExpression(expression: KtExpression, scopeWithImports: LexicalScope, sourcePath: Collection<KtFile>, kind: CompilationKind = CompilationKind.DEFAULT): Pair<BindingContext, ComponentProvider> {
         try {
-            // Use same lock as 'compileFile' to avoid concurrency issues such as #42
+            // Use same lock as 'compileFile' to avoid concurrency issues
             compileLock.withLock {
                 val compileEnv = compileEnvironmentFor(kind)
                 val (container, trace) = compileEnv.createContainer(sourcePath)
