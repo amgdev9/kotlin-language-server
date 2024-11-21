@@ -25,19 +25,27 @@ fun hoverAt(file: CompiledFile, cursor: Int): Hover? {
     val javaDoc = getDocString(file, cursor)
     val location = ref.textRange
     val hoverText = DECL_RENDERER.render(target)
-    val hover = MarkupContent("markdown", listOf("```kotlin\n$hoverText\n```", javaDoc).filter { it.isNotEmpty() }.joinToString("\n---\n"))
+    val hover = MarkupContent(
+        "markdown",
+        listOf("```kotlin\n$hoverText\n```", javaDoc).filter { it.isNotEmpty() }.joinToString("\n---\n")
+    )
     val range = Range(
-            position(file.content, location.startOffset),
-            position(file.content, location.endOffset))
+        position(file.content, location.startOffset),
+        position(file.content, location.endOffset)
+    )
     return Hover(hover, range)
 }
 
 private fun typeHoverAt(file: CompiledFile, cursor: Int): Hover? {
     val expression = file.parseAtPoint(cursor)?.findParent<KtExpression>() ?: return null
-    val javaDoc: String = expression.children.mapNotNull { (it as? PsiDocCommentBase)?.text }.map(::renderJavaDoc).firstOrNull() ?: ""
+    val javaDoc =
+        expression.children.mapNotNull { (it as? PsiDocCommentBase)?.text }.map(::renderJavaDoc).firstOrNull() ?: ""
     val scope = file.scopeAtPoint(cursor) ?: return null
     val hoverText = renderTypeOf(expression, file.bindingContextOf(expression, scope))
-    val hover = MarkupContent("markdown", listOf("```kotlin\n$hoverText\n```", javaDoc).filter { it.isNotEmpty() }.joinToString("\n---\n"))
+    val hover = MarkupContent(
+        "markdown",
+        listOf("```kotlin\n$hoverText\n```", javaDoc).filter { it.isNotEmpty() }.joinToString("\n---\n")
+    )
     return Hover(hover)
 }
 

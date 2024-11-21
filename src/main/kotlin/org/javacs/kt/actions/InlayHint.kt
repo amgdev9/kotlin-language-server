@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.resolve.calls.util.isSingleUnderscore
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.error.ErrorType
 
-
 private fun PsiElement.determineType(ctx: BindingContext): KotlinType? =
     when (this) {
         is KtNamedFunction -> {

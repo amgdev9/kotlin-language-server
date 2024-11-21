@@ -1,7 +1,5 @@
 package org.javacs.kt.externalsources
 
-import org.javacs.kt.CompilerClassPath
-import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.TemporaryFolder
@@ -15,8 +13,6 @@ import java.util.LinkedHashMap
  * compiled or source archives, such as JARs or ZIPs.
  */
 class ClassContentProvider(
-    private val config: Configuration.ExternalSources,
-    private val cp: CompilerClassPath,
     private val tempDir: TemporaryFolder,
     private val sourceArchiveProvider: SourceArchiveProvider,
     private val decompiler: Decompiler = Decompiler()

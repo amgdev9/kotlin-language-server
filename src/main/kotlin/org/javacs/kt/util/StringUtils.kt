@@ -34,10 +34,10 @@ fun stringDistance(candidate: CharSequence, pattern: CharSequence, maxOffset: In
 
                 if (iCandidate != iPattern) {
                     // Using max to bypass the need for computer transpositions ("ab" vs "ba")
-                    val iMax = Math.max(iCandidate, iPattern)
+                    val iMax = iCandidate.coerceAtLeast(iPattern)
                     iCandidate = iMax
                     iPattern = iMax
-                    if (iMax >= Math.min(candidateLength, patternLength)) {
+                    if (iMax >= candidateLength.coerceAtMost(patternLength)) {
                         break
                     }
                 }

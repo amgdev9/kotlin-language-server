@@ -1,4 +1,4 @@
-package org.javacs.kt
+package org.javacs.kt.lsp
 
 import org.eclipse.lsp4j.*
 import org.javacs.kt.util.AsyncExecutor
@@ -8,6 +8,26 @@ import org.javacs.kt.actions.offset
 import org.javacs.kt.actions.listOverridableMembers
 import java.util.concurrent.CompletableFuture
 import java.nio.file.Paths
+import org.eclipse.lsp4j.jsonrpc.services.JsonSegment
+import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
+import org.javacs.kt.CompilerClassPath
+import org.javacs.kt.SourcePath
+import org.javacs.kt.URIContentProvider
+
+@JsonSegment("kotlin")
+interface KotlinProtocolExtensions {
+    @JsonRequest
+    fun jarClassContents(textDocument: TextDocumentIdentifier): CompletableFuture<String?>
+
+    @JsonRequest
+    fun buildOutputLocation(): CompletableFuture<String?>
+
+    @JsonRequest
+    fun mainClass(textDocument: TextDocumentIdentifier): CompletableFuture<Map<String, Any?>>
+
+    @JsonRequest
+    fun overrideMember(position: TextDocumentPositionParams): CompletableFuture<List<CodeAction>>
+}
 
 class KotlinProtocolExtensionService(
     private val uriContentProvider: URIContentProvider,

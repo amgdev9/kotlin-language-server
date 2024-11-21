@@ -8,8 +8,6 @@ import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.LanguageServer
 import org.javacs.kt.CompilerClassPath
 import org.javacs.kt.Configuration
-import org.javacs.kt.KotlinProtocolExtensionService
-import org.javacs.kt.KotlinProtocolExtensions
 import org.javacs.kt.LOG
 import org.javacs.kt.LogLevel
 import org.javacs.kt.LogMessage
@@ -38,8 +36,6 @@ class KotlinLanguageServer(
     private val tempDirectory = TemporaryFolder()
     private val uriContentProvider = URIContentProvider(
         ClassContentProvider(
-            config.externalSources,
-            classPath,
             tempDirectory,
             CompositeSourceArchiveProvider(
                 JdkSourceArchiveProvider(classPath),
@@ -171,13 +167,6 @@ class KotlinLanguageServer(
         LOG.connectErrorBackend(backend)
     }
 
-    private fun LogLevel.toLSPMessageType(): MessageType = when (this) {
-        LogLevel.ERROR -> MessageType.Error
-        LogLevel.WARN -> MessageType.Warning
-        LogLevel.INFO -> MessageType.Info
-        else -> MessageType.Log
-    }
-
     override fun close() {
         textDocumentService.close()
         classPath.close()
@@ -191,4 +180,11 @@ class KotlinLanguageServer(
     }
 
     override fun exit() {}
+}
+
+private fun LogLevel.toLSPMessageType(): MessageType = when (this) {
+    LogLevel.ERROR -> MessageType.Error
+    LogLevel.WARN -> MessageType.Warning
+    LogLevel.INFO -> MessageType.Info
+    else -> MessageType.Log
 }

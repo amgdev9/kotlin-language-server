@@ -10,7 +10,7 @@ class DelegatePrintStream(private val delegate: (String) -> Unit): PrintStream(B
 	override fun write(c: Int) = delegate((c.toChar()).toString())
 
 	override fun write(buf: ByteArray, off: Int, len: Int) {
-		if (len > 0 && buf.size > 0) {
+		if (len > 0 && buf.isNotEmpty()) {
 			delegate(String(buf, off, len))
 		}
 	}

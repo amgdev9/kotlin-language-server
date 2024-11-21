@@ -33,11 +33,12 @@ fun resolveMain(file: CompiledFile): Map<String,Any> {
     return emptyMap()
 }
 
-// only one main method allowed top level in a file (so invalid syntax files will not show any main methods)
-private fun findTopLevelMainFunction(file: KtFile): Pair<String?, TextRange>? = file.declarations.find {
-    it is KtNamedFunction && "main" == it.name
-}?.let {
-    Pair(it.name, it.textRangeInParent)
+private fun findTopLevelMainFunction(file: KtFile): Pair<String?, TextRange>? {
+    val mainFunction = file.declarations.find {
+        it is KtNamedFunction && it.name == "main"
+    }
+    if (mainFunction == null) return null
+    return Pair(mainFunction.name, mainFunction.textRangeInParent)
 }
 
 // finds a top level class that contains a companion object with a main function inside
@@ -51,15 +52,13 @@ private fun findCompanionObjectMain(file: KtFile): Pair<String?, TextRange>? = f
     }
     .flatMap { companionObject ->
         companionObject.body?.children?.toList() ?: emptyList()
-    }
-    .mapNotNull { companionObjectInternal ->
+    }.firstNotNullOfOrNull { companionObjectInternal ->
         companionObjectInternal.takeIf {
             companionObjectInternal is KtNamedFunction
-            && "main" == companionObjectInternal.name
-            && companionObjectInternal.text.startsWith("@JvmStatic")
+                    && "main" == companionObjectInternal.name
+                    && companionObjectInternal.text.startsWith("@JvmStatic")
         }
-    }
-    .firstOrNull()?.let {
+    }?.let {
         // a little ugly, but because of success of the above, we know that "it" has 4 layers of parent objects (child of companion object body, companion object body, companion object, outer class)
         Pair((it.parent.parent.parent.parent as KtClass).fqName?.toString(), it.textRange)
     }

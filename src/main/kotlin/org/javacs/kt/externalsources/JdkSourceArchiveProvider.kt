@@ -6,7 +6,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 class JdkSourceArchiveProvider(
-    private val cp: CompilerClassPath
+    private val classPath: CompilerClassPath
 ) : SourceArchiveProvider {
 
     /**
@@ -16,7 +16,7 @@ class JdkSourceArchiveProvider(
      * TODO: improve this resolution logic to work for older JDK versions as well.
      */
     override fun fetchSourceArchive(compiledArchive: Path): Path? {
-        cp.javaHome?.let {
+        classPath.javaHome?.let {
             val javaHomePath = File(it).toPath()
             if (compiledArchive == javaHomePath) {
                 return Paths.get(compiledArchive.toString(), "lib", "src.zip")

@@ -39,10 +39,7 @@ enum class LogLevel(val value: Int) {
 class LogMessage(
     val level: LogLevel,
     val message: String
-) {
-    val formatted: String
-        get() = "[$level] $message"
-}
+)
 
 class Logger {
     private var outBackend: ((LogMessage) -> Unit)? = null
@@ -101,8 +98,6 @@ class Logger {
         logWithPlaceholdersAt(LogLevel.DEEP_TRACE, msg, placeholders)
 
     // Convenience logging methods using inlined lambdas
-
-    inline fun error(msg: () -> String) = logWithLambdaAt(LogLevel.ERROR, msg)
 
     inline fun warn(msg: () -> String) = logWithLambdaAt(LogLevel.WARN, msg)
 
