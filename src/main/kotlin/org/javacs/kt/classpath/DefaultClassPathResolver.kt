@@ -52,6 +52,5 @@ private fun ignoredPathPatterns(root: Path, gitignore: Path): List<PathMatcher> 
 
 /** Tries to create a classpath resolver from a file using as many sources as possible */
 private fun asClassPathProvider(path: Path): ClassPathResolver? =
-    MavenClassPathResolver.maybeCreate(path)
-        ?: GradleClassPathResolver.maybeCreate(path)
+    GradleClassPathResolver.maybeCreate(path)
         ?: ShellClassPathResolver.maybeCreate(path)

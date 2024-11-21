@@ -15,12 +15,6 @@ import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
 import org.jetbrains.kotlin.resolve.source.PsiSourceFile
 import kotlin.math.max
 
-fun extractRange(content: String, range: Range) =
-    content.substring(
-        offset(content, range.start),
-        offset(content, range.end)
-    )
-
 fun offset(content: String, position: Position) =
     offset(content, position.line, position.character)
 

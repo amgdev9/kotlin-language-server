@@ -6,12 +6,10 @@ import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.javacs.kt.actions.workspaceSymbols
-import org.javacs.kt.actions.extractRange
 import org.javacs.kt.util.filePath
 import org.javacs.kt.util.parseURI
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
-import com.google.gson.JsonElement
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import org.javacs.kt.CompilerClassPath

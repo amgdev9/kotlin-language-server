@@ -46,13 +46,13 @@ private fun backtickBuiltins(fqName: FqName): String {
         if (result.contains(builtin)) {
             // need to go through each part to handle words
             // that are part of other words (e.g, as and class)
-            result = result.split('.').map {
+            result = result.split('.').joinToString(".") {
                 if (builtin == it) {
                     "`$builtin`"
                 } else {
                     it
                 }
-            }.joinToString(".")
+            }
         }
     }
 

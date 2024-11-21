@@ -58,10 +58,9 @@ private val TYPE_RENDERER: DescriptorRenderer by lazy { DescriptorRenderer.COMPA
 private fun renderJavaDoc(text: String): String {
     val split = text.split('\n')
     return split.mapIndexed { i, it ->
-        val ret: String
-        if (i == 0) ret = it.substring(it.indexOf("/**") + 3) // get rid of the start comment characters
-        else if (i == split.size - 1) ret = it.substring(it.indexOf("*/") + 2) // get rid of the end comment characters
-        else ret = it.substring(it.indexOf('*') + 1) // get rid of any leading *
+        val ret = if (i == 0) it.substring(it.indexOf("/**") + 3) // get rid of the start comment characters
+        else if (i == split.size - 1) it.substring(it.indexOf("*/") + 2) // get rid of the end comment characters
+        else it.substring(it.indexOf('*') + 1) // get rid of any leading *
         ret
     }.joinToString("\n")
 }

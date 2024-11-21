@@ -28,7 +28,7 @@ fun goToDefinition(
     classContentProvider: ClassContentProvider,
     tempDir: TemporaryFolder,
     config: Configuration.ExternalSources,
-    cp: CompilerClassPath
+    classPath: CompilerClassPath
 ): Location? {
     val (_, target) = file.referenceExpressionAtPoint(cursor) ?: return null
 
@@ -43,13 +43,13 @@ fun goToDefinition(
     if (destination != null) {
         val rawClassURI = destination.uri
 
-        if (isInsideArchive(rawClassURI, cp)) {
+        if (isInsideArchive(rawClassURI, classPath)) {
             parseURI(rawClassURI).toKlsURI()?.let { klsURI ->
                 val (klsSourceURI, content) = classContentProvider.contentOf(klsURI)
 
-                if (config.useKlsScheme) {
+                destination.uri = if (config.useKlsScheme) {
                     // Defer decompilation until a jarClassContents request is sent
-                    destination.uri = klsSourceURI.toString()
+                    klsSourceURI.toString()
                 } else {
                     // Return the path to a temporary file
                     // since the client has not opted into
@@ -65,7 +65,7 @@ fun goToDefinition(
                             }
                     }
 
-                    destination.uri = tmpFile.toUri().toString()
+                    tmpFile.toUri().toString()
                 }
 
                 if (destination.range.isZero) {
@@ -76,8 +76,7 @@ fun goToDefinition(
                     }
                     definitionPattern.findAll(content)
                         .map { it.groups[1]!! }
-                        .find { it.value == name }
-                        ?.let { it.range }
+                        .find { it.value == name }?.range
                         ?.let { destination.range = Range(position(content, it.first), position(content, it.last)) }
                 }
             }

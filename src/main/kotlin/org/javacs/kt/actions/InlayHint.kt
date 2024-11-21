@@ -66,7 +66,6 @@ private fun PsiElement.determineType(ctx: BindingContext): KotlinType? =
         else -> null
     }
 
-@Suppress("ReturnCount")
 private fun PsiElement.hintBuilder(kind: InlayKind, file: CompiledFile, label: String? = null): InlayHint? {
     val element = when(this) {
         is KtFunction -> this.valueParameterList!!.originalElement
@@ -89,7 +88,6 @@ private fun PsiElement.hintBuilder(kind: InlayKind, file: CompiledFile, label: S
     return hint
 }
 
-@Suppress("ReturnCount")
 private fun callableArgNameHints(
     acc: MutableList<InlayHint>,
     callExpression: KtCallExpression,
@@ -181,7 +179,6 @@ private fun destructuringVarHints(
     acc.addAll(hints)
 }
 
-@Suppress("ReturnCount")
 private fun declarationHint(
     acc: MutableList<InlayHint>,
     node: KtProperty,
