@@ -20,10 +20,9 @@ import org.javacs.kt.DatabaseService
 import org.javacs.kt.externalsources.*
 import org.javacs.kt.getStoragePath
 import org.javacs.kt.LanguageClientProgress
-import org.javacs.kt.Progress
 import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.util.AsyncExecutor
-import org.javacs.kt.util.TemporaryDirectory
+import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
 import java.io.Closeable
 import java.nio.file.Paths
@@ -36,7 +35,7 @@ class KotlinLanguageServer(
     val databaseService = DatabaseService()
     val classPath = CompilerClassPath(config.compiler, config.scripts, config.codegen, databaseService)
 
-    private val tempDirectory = TemporaryDirectory()
+    private val tempDirectory = TemporaryFolder()
     private val uriContentProvider = URIContentProvider(
         ClassContentProvider(
             config.externalSources,
@@ -59,7 +58,7 @@ class KotlinLanguageServer(
     private lateinit var client: LanguageClient
 
     private val async = AsyncExecutor()
-    private var progressFactory: Progress.Factory = Progress.Factory.None
+    private var progressFactory: LanguageClientProgress.Factory? = null
         set(factory) {
             field = factory
             sourcePath.progressFactory = factory

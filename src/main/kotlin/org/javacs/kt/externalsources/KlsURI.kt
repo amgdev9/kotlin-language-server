@@ -1,7 +1,7 @@
 package org.javacs.kt.externalsources
 
 import org.javacs.kt.util.partitionAroundLast
-import org.javacs.kt.util.TemporaryDirectory
+import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
 import java.net.URI
 import java.net.URL
@@ -130,7 +130,7 @@ data class KlsURI(val fileUri: URI, val query: Map<QueryParam, String>) {
         }
     }
 
-    fun extractToTemporaryFile(dir: TemporaryDirectory): Path = withJarURLConnection {
+    fun extractToTemporaryFile(dir: TemporaryFolder): Path = withJarURLConnection {
         val name = it.jarEntry.name.substringAfterLast("/").split(".")
         val tmpFile = dir.createTempFile(name[0], ".${name[1]}")
 

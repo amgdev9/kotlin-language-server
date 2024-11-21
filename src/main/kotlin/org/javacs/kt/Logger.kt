@@ -110,7 +110,7 @@ class Logger {
 
     inline fun debug(msg: () -> String) = logWithLambdaAt(LogLevel.DEBUG, msg)
 
-    fun connectJULFrontend() {
+    fun connectJavaUtilLogFrontend() {
         val rootLogger = java.util.logging.Logger.getLogger("")
         rootLogger.addHandler(JULRedirector(this))
     }

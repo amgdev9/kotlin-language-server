@@ -17,8 +17,6 @@ import org.javacs.kt.actions.goToDefinition
 import org.javacs.kt.actions.convertDiagnostic
 import org.javacs.kt.actions.hoverAt
 import org.javacs.kt.actions.offset
-import org.javacs.kt.actions.extractRange
-import org.javacs.kt.actions.position
 import org.javacs.kt.actions.findReferences
 import org.javacs.kt.actions.encodedSemanticTokens
 import org.javacs.kt.actions.fetchSignatureHelpAt
@@ -28,7 +26,7 @@ import org.javacs.kt.actions.provideHints
 import org.javacs.kt.actions.documentSymbols
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.Debouncer
-import org.javacs.kt.util.TemporaryDirectory
+import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.describeURIs
 import org.javacs.kt.util.filePath
@@ -45,7 +43,7 @@ class KotlinTextDocumentService(
     private val sf: SourceFiles,
     private val sp: SourcePath,
     private val config: Configuration,
-    private val tempDirectory: TemporaryDirectory,
+    private val tempDirectory: TemporaryFolder,
     private val uriContentProvider: URIContentProvider,
     private val cp: CompilerClassPath
 ) : TextDocumentService, Closeable {

@@ -1,2 +1,1 @@
 - Dejar solo gradle como build system soportado (y el manual)
-- Eliminar interfaz Progress

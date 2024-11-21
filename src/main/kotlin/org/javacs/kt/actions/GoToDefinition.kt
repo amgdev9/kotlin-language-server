@@ -11,7 +11,7 @@ import org.javacs.kt.externalsources.ClassContentProvider
 import org.javacs.kt.externalsources.toKlsURI
 import org.javacs.kt.externalsources.KlsURI
 import org.javacs.kt.util.partitionAroundLast
-import org.javacs.kt.util.TemporaryDirectory
+import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
 import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -26,7 +26,7 @@ fun goToDefinition(
     file: CompiledFile,
     cursor: Int,
     classContentProvider: ClassContentProvider,
-    tempDir: TemporaryDirectory,
+    tempDir: TemporaryFolder,
     config: Configuration.ExternalSources,
     cp: CompilerClassPath
 ): Location? {

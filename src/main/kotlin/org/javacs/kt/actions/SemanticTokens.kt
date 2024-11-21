@@ -112,7 +112,7 @@ private fun elementTokens(element: PsiElement, bindingContext: BindingContext, r
         // TODO: Ideally we would like to cut-off subtrees outside our range, but this doesn't quite seem to work
         // .preOrderTraversal { elem -> textRange?.let { it.contains(elem.textRange) } ?: true }
         .preOrderTraversal()
-        .filter { elem -> textRange?.let { it.contains(elem.textRange) } ?: true }
+        .filter { elem -> textRange?.contains(elem.textRange) != false }
         .mapNotNull { elementToken(it, bindingContext) }
 }
 
@@ -144,7 +144,7 @@ private fun elementToken(element: PsiElement, bindingContext: BindingContext): S
                 }
                 else -> return null
             }
-            val isConstant = (target as? VariableDescriptor)?.let { !it.isVar() || it.isConst() } ?: false
+            val isConstant = (target as? VariableDescriptor)?.let { !it.isVar || it.isConst } == true
             val modifiers = if (isConstant) setOf(SemanticTokenModifier.READONLY) else setOf()
 
             SemanticToken(elementRange, tokenType, modifiers)
@@ -165,14 +165,12 @@ private fun elementToken(element: PsiElement, bindingContext: BindingContext): S
             val identifierRange = element.nameIdentifier?.let { range(file.text, it.textRange) } ?: return null
             val modifiers = mutableSetOf(SemanticTokenModifier.DECLARATION)
 
-            if (element is KtVariableDeclaration && (!element.isVar() || element.hasModifier(KtTokens.CONST_KEYWORD)) || element is KtParameter) {
+            if (element is KtVariableDeclaration && (!element.isVar || element.hasModifier(KtTokens.CONST_KEYWORD)) || element is KtParameter) {
                 modifiers.add(SemanticTokenModifier.READONLY)
             }
 
-            if (element is KtModifierListOwner) {
-                if (element.hasModifier(KtTokens.ABSTRACT_KEYWORD)) {
-                    modifiers.add(SemanticTokenModifier.ABSTRACT)
-                }
+            if (element.hasModifier(KtTokens.ABSTRACT_KEYWORD)) {
+                modifiers.add(SemanticTokenModifier.ABSTRACT)
             }
 
             SemanticToken(identifierRange, tokenType, modifiers)

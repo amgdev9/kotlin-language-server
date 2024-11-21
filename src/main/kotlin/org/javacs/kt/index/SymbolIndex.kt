@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.name.FqName
 import org.javacs.kt.LOG
 import org.javacs.kt.DatabaseService
-import org.javacs.kt.Progress
+import org.javacs.kt.LanguageClientProgress
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -86,7 +86,7 @@ class SymbolIndex(
         databaseService.db ?: Database.connect("jdbc:h2:mem:symbolindex;DB_CLOSE_DELAY=-1", "org.h2.Driver")
     }
 
-    var progressFactory: Progress.Factory = Progress.Factory.None
+    var progressFactory: LanguageClientProgress.Factory? = null
 
     init {
         transaction(db) {
@@ -99,7 +99,7 @@ class SymbolIndex(
         val started = System.currentTimeMillis()
         LOG.info("Updating full symbol index...")
 
-        progressFactory.create("Indexing").thenApplyAsync { progress ->
+        progressFactory?.create("Indexing")?.thenApplyAsync { progress ->
             try {
                 transaction(db) {
                     // Remove everything first.

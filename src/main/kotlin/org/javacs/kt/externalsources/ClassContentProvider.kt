@@ -5,7 +5,7 @@ import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.KotlinLSException
-import org.javacs.kt.util.TemporaryDirectory
+import org.javacs.kt.util.TemporaryFolder
 import java.io.BufferedReader
 import java.io.FileNotFoundException
 import java.nio.file.Files
@@ -18,7 +18,7 @@ import java.util.LinkedHashMap
 class ClassContentProvider(
     private val config: Configuration.ExternalSources,
     private val cp: CompilerClassPath,
-    private val tempDir: TemporaryDirectory,
+    private val tempDir: TemporaryFolder,
     private val sourceArchiveProvider: SourceArchiveProvider,
     private val decompiler: Decompiler = FernflowerDecompiler()
 ) {
