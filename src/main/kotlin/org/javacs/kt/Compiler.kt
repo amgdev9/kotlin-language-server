@@ -488,24 +488,6 @@ class Compiler(
     fun createKtFile(content: String, file: Path = Paths.get("dummy.virtual.kt"), kind: CompilationKind = CompilationKind.DEFAULT): KtFile =
             createPsiFile(content, file, language = KotlinLanguage.INSTANCE, kind = kind) as KtFile
 
-    fun createKtDeclaration(content: String, file: Path = Paths.get("dummy.virtual.kt"), kind: CompilationKind = CompilationKind.DEFAULT): KtDeclaration {
-        val parse = createKtFile(content, file, kind)
-        val declarations = parse.declarations
-
-        assert(declarations.size == 1) { "${declarations.size} declarations in $content" }
-
-        val onlyDeclaration = declarations.first()
-
-        if (onlyDeclaration is KtScript) {
-            val scriptDeclarations = onlyDeclaration.declarations
-
-            assert(declarations.size == 1) { "${declarations.size} declarations in script in $content" }
-
-            return scriptDeclarations.first()
-        }
-        else return onlyDeclaration
-    }
-
     private fun compileEnvironmentFor(kind: CompilationKind): CompilationEnvironment = when (kind) {
         CompilationKind.DEFAULT -> defaultCompileEnvironment
         CompilationKind.BUILD_SCRIPT -> buildScriptCompileEnvironment ?: defaultCompileEnvironment

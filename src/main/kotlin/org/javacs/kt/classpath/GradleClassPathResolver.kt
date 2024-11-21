@@ -2,7 +2,6 @@ package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
 import org.javacs.kt.util.execAndReadStdoutAndStderr
-import org.javacs.kt.util.isOSWindows
 import org.javacs.kt.util.findCommandOnPath
 import java.io.File
 import java.nio.file.Files
@@ -58,7 +57,7 @@ private fun gradleScriptToTempFile(scriptName: String): File {
 }
 
 private fun getGradleCommand(workspace: Path): Path {
-    val wrapperName = if (isOSWindows()) "gradlew.bat" else "gradlew"
+    val wrapperName = "gradlew"
     val wrapper = workspace.resolve(wrapperName).toAbsolutePath()
     if (Files.isExecutable(wrapper)) {
         return wrapper

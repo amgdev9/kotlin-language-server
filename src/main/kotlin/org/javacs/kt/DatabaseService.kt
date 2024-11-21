@@ -59,17 +59,14 @@ class DatabaseService {
     }
 
     private fun getDbFromFile(storagePath: Path?): Database? {
-        return storagePath?.let {
-            if (Files.isDirectory(it)) {
-                Database.connect("jdbc:sqlite:${getDbFilePath(it)}")
-            } else {
-                null
-            }
-        }
+        if (storagePath == null) return null
+        if (!Files.isDirectory(storagePath)) return null
+        return Database.connect("jdbc:sqlite:${getDbFilePath(storagePath)}")
     }
 
     private fun deleteDb(storagePath: Path?) {
-        storagePath?.let { Files.deleteIfExists(getDbFilePath(it)) }
+        if(storagePath == null) return
+        Files.deleteIfExists(getDbFilePath(storagePath))
     }
 
     private fun getDbFilePath(storagePath: Path) = Path.of(storagePath.toString(), DB_FILENAME)
