@@ -1,5 +1,4 @@
 @file:OptIn(ExperimentalCompilerApi::class)
-@file:Suppress("DEPRECATION")
 
 package org.javacs.kt
 
@@ -53,7 +52,6 @@ import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.host.configurationDependencies
 import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 import kotlin.script.experimental.jvm.JvmDependency
-import org.javacs.kt.util.KotlinLSException
 import org.javacs.kt.util.LoggingMessageCollector
 import org.jetbrains.kotlin.cli.common.output.writeAllTo
 import org.jetbrains.kotlin.codegen.ClassBuilderFactories
@@ -552,7 +550,7 @@ class Compiler(
                 return Pair(trace.bindingContext, container)
             }
         } catch (e: KotlinFrontEndException) {
-            throw KotlinLSException("Error while analyzing: ${describeExpression(expression.text)}", e)
+            throw RuntimeException("Error while analyzing: ${describeExpression(expression.text)}", e)
         }
     }
 

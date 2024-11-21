@@ -2,7 +2,6 @@ package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
 import org.javacs.kt.util.execAndReadStdoutAndStderr
-import org.javacs.kt.util.KotlinLSException
 import org.javacs.kt.util.isOSWindows
 import org.javacs.kt.util.findCommandOnPath
 import java.io.File
@@ -44,11 +43,8 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
     }
 }
 
-private fun gradleScriptToTempFile(scriptName: String, deleteOnExit: Boolean = false): File {
+private fun gradleScriptToTempFile(scriptName: String): File {
     val config = File.createTempFile("classpath", ".gradle")
-    if (deleteOnExit) {
-        config.deleteOnExit()
-    }
 
     LOG.debug("Creating temporary gradle file {}", config.absolutePath)
 
@@ -66,17 +62,17 @@ private fun getGradleCommand(workspace: Path): Path {
     val wrapper = workspace.resolve(wrapperName).toAbsolutePath()
     if (Files.isExecutable(wrapper)) {
         return wrapper
-    } else {
-        return workspace.parent?.let(::getGradleCommand)
-            ?: findCommandOnPath("gradle")
-            ?: throw KotlinLSException("Could not find 'gradle' on PATH")
     }
+
+    return workspace.parent?.let(::getGradleCommand)
+        ?: findCommandOnPath("gradle")
+        ?: throw RuntimeException("Could not find 'gradle' on PATH")
 }
 
 private fun readDependenciesViaGradleCLI(projectDirectory: Path, gradleScripts: List<String>, gradleTasks: List<String>): Set<Path> {
     LOG.info("Resolving dependencies for '{}' through Gradle's CLI using tasks {}...", projectDirectory.fileName, gradleTasks)
 
-    val tmpScripts = gradleScripts.map { gradleScriptToTempFile(it, deleteOnExit = false).toPath().toAbsolutePath() }
+    val tmpScripts = gradleScripts.map { gradleScriptToTempFile(it).toPath().toAbsolutePath() }
     val gradle = getGradleCommand(projectDirectory)
 
     val command = listOf(gradle.toString()) + tmpScripts.flatMap { listOf("-I", it.toString()) } + gradleTasks + listOf("--console=plain")
@@ -105,12 +101,10 @@ private fun findGradleCLIDependencies(command: List<String>, projectDirectory: P
 }
 
 private val artifactPattern by lazy { "kotlin-lsp-gradle (.+)(?:\r?\n)".toRegex() }
-private val gradleErrorWherePattern by lazy { "\\*\\s+Where:[\r\n]+(\\S\\.*)".toRegex() }
 
 private fun parseGradleCLIDependencies(output: String): Set<Path>? {
     LOG.debug(output)
     val artifacts = artifactPattern.findAll(output)
         .mapNotNull { Paths.get(it.groups[1]?.value) }
-        .filterNotNull()
     return artifacts.toSet()
 }

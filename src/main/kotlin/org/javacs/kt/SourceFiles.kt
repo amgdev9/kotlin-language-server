@@ -4,7 +4,6 @@ import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import com.intellij.lang.Language
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
-import org.javacs.kt.util.KotlinLSException
 import org.javacs.kt.util.filePath
 import org.javacs.kt.util.describeURIs
 import org.javacs.kt.util.describeURI
@@ -124,17 +123,17 @@ class SourceFiles(
 
     fun changedOnDisk(uri: URI) {
         if (isSource(uri)) {
-            files[uri] = readFromDisk(uri, files[uri]?.isTemporary ?: true)
-                ?: throw KotlinLSException("Could not read source file '$uri' after being changed on disk")
+            files[uri] = readFromDisk(uri, files[uri]?.isTemporary == true)
+                ?: throw RuntimeException("Could not read source file '$uri' after being changed on disk")
         }
     }
 
     private fun readFromDisk(uri: URI, temporary: Boolean): SourceVersion? = try {
         val content = contentProvider.contentOf(uri)
         SourceVersion(content, -1, languageOf(uri), isTemporary = temporary)
-    } catch (e: FileNotFoundException) {
+    } catch (_: FileNotFoundException) {
         null
-    } catch (e: IOException) {
+    } catch (_: IOException) {
         LOG.warn("Exception while reading source file {}", describeURI(uri))
         null
     }

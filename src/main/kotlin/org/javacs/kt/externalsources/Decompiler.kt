@@ -2,13 +2,12 @@ package org.javacs.kt.externalsources
 
 import java.nio.file.Path
 import java.nio.file.Files
-import org.javacs.kt.util.KotlinLSException
 import org.javacs.kt.util.replaceExtensionWith
 import org.javacs.kt.util.withCustomStdout
 import org.javacs.kt.LOG
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler
 
-class FernflowerDecompiler {
+class Decompiler {
 	private val outputDir by lazy(::createOutputDirectory)
 
 	fun decompileClass(compiledClass: Path) = decompile(compiledClass, ".java")
@@ -19,7 +18,7 @@ class FernflowerDecompiler {
 		val srcOutPath = outputDir.resolve(srcOutName)
 
 		if (!Files.exists(srcOutPath)) {
-			throw KotlinLSException("Could not decompile ${compiledClassOrJar.fileName}: Fernflower did not generate sources at ${srcOutPath.fileName}")
+			throw RuntimeException("Could not decompile ${compiledClassOrJar.fileName}: Fernflower did not generate sources at ${srcOutPath.fileName}")
 		}
 
 		return srcOutPath

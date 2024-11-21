@@ -4,7 +4,6 @@ import org.javacs.kt.CompilerClassPath
 import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
 import org.javacs.kt.util.describeURI
-import org.javacs.kt.util.KotlinLSException
 import org.javacs.kt.util.TemporaryFolder
 import java.io.BufferedReader
 import java.io.FileNotFoundException
@@ -20,7 +19,7 @@ class ClassContentProvider(
     private val cp: CompilerClassPath,
     private val tempDir: TemporaryFolder,
     private val sourceArchiveProvider: SourceArchiveProvider,
-    private val decompiler: FernflowerDecompiler = FernflowerDecompiler()
+    private val decompiler: Decompiler = Decompiler()
 ) {
     /** Maps recently used (source-)KLS-URIs to their source contents (e.g. decompiled code) and the file extension. */
     private val cachedContents = object : LinkedHashMap<String, Pair<String, String>>() {
@@ -43,7 +42,7 @@ class ClassContentProvider(
                     ?: tryReadContentOf(resolvedUri.withFileExtension("class"))
                     ?: tryReadContentOf(resolvedUri.withFileExtension("java"))
                     ?: tryReadContentOf(resolvedUri.withFileExtension("kt"))
-                    ?: throw KotlinLSException("Could not find $uri")
+                    ?: throw RuntimeException("Could not find $uri")
             }.also { cachedContents[key] = it }
         val sourceUri = resolvedUri.withFileExtension(extension)
         return Pair(sourceUri, contents)
