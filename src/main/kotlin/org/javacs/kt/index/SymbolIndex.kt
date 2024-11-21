@@ -96,7 +96,6 @@ class SymbolIndex(
 
     /** Rebuilds the entire index. May take a while. */
     fun refresh(module: ModuleDescriptor, exclusions: Sequence<DeclarationDescriptor>) {
-        val started = System.currentTimeMillis()
         LOG.info("Updating full symbol index...")
 
         progressFactory?.create("Indexing")?.thenApplyAsync { progress ->
@@ -107,9 +106,8 @@ class SymbolIndex(
                     // Add new ones.
                     addDeclarations(allDescriptors(module, exclusions))
 
-                    val finished = System.currentTimeMillis()
                     val count = Symbols.slice(Symbols.fqName.count()).selectAll().first()[Symbols.fqName.count()]
-                    LOG.info("Updated full symbol index in ${finished - started} ms! (${count} symbol(s))")
+                    LOG.info("Updated full symbol index! (${count} symbol(s))")
                 }
             } catch (e: Exception) {
                 LOG.error("Error while updating symbol index")
@@ -122,7 +120,6 @@ class SymbolIndex(
 
     // Removes a list of indexes and adds another list. Everything is done in the same transaction.
     fun updateIndexes(remove: Sequence<DeclarationDescriptor>, add: Sequence<DeclarationDescriptor>) {
-        val started = System.currentTimeMillis()
         LOG.info("Updating symbol index...")
 
         try {
@@ -130,9 +127,8 @@ class SymbolIndex(
                 removeDeclarations(remove)
                 addDeclarations(add)
 
-                val finished = System.currentTimeMillis()
                 val count = Symbols.slice(Symbols.fqName.count()).selectAll().first()[Symbols.fqName.count()]
-                LOG.info("Updated symbol index in ${finished - started} ms! (${count} symbol(s))")
+                LOG.info("Updated symbol index! (${count} symbol(s))")
             }
         } catch (e: Exception) {
             LOG.error("Error while updating symbol index")
