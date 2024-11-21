@@ -316,7 +316,6 @@ class SourcePath(
 
         val declarations = getDeclarationDescriptors(files.values)
         index.refresh(module, declarations)
-
     }
 
     // Gets all the declaration descriptors for the collection of files
@@ -343,7 +342,6 @@ class SourcePath(
         LOG.info("Refreshing source path")
         files.values.forEach { it.clean() }
         files.values.forEach { it.compile() }
-
     }
 
     /**

@@ -21,7 +21,7 @@ private class SourceVersion(val content: String, val version: Int, val language:
 /**
  * Notify SourcePath whenever a file changes
  */
-private class NotifySourcePath(private val sp: SourcePath) {
+private class NotifySourcePath(private val sourcePath: SourcePath) {
     private val files = mutableMapOf<URI, SourceVersion>()
 
     operator fun get(uri: URI): SourceVersion? = files[uri]
@@ -30,16 +30,16 @@ private class NotifySourcePath(private val sp: SourcePath) {
         val content = convertLineSeparators(source.content)
 
         files[uri] = source
-        sp.put(uri, content, source.language, source.isTemporary)
+        sourcePath.put(uri, content, source.language, source.isTemporary)
     }
 
     fun remove(uri: URI) {
         files.remove(uri)
-        sp.delete(uri)
+        sourcePath.delete(uri)
     }
 
     fun removeIfTemporary(uri: URI): Boolean =
-        if (sp.deleteIfTemporary(uri)) {
+        if (sourcePath.deleteIfTemporary(uri)) {
             files.remove(uri)
             true
         } else {
@@ -49,7 +49,7 @@ private class NotifySourcePath(private val sp: SourcePath) {
     fun removeAll(rm: Collection<URI>) {
         files -= rm
 
-        rm.forEach(sp::delete)
+        rm.forEach(sourcePath::delete)
     }
 
     val keys get() = files.keys
@@ -89,7 +89,6 @@ class SourceFiles(
         } else {
             files.remove(uri)
         }
-
     }
 
     fun edit(uri: URI, newVersion: Int, contentChanges: List<TextDocumentContentChangeEvent>) {
@@ -149,8 +148,9 @@ class SourceFiles(
         LOG.info("Searching $root using exclusions: ${exclusions.excludedPatterns}")
         val addSources = findSourceFiles(root)
 
-        logAdded(addSources, root)
+        LOG.info("Adding {} under {} to source path", describeURIs(addSources), root)
 
+        // Load all kotlin files into RAM 
         for (uri in addSources) {
             readFromDisk(uri, temporary = false)?.let {
                 files[uri] = it
@@ -161,16 +161,6 @@ class SourceFiles(
         updateExclusions()
     }
 
-    fun removeWorkspaceRoot(root: Path) {
-        val rmSources = files.keys.filter { it.filePath?.startsWith(root) ?: false }
-
-        logRemoved(rmSources, root)
-
-        files.removeAll(rmSources)
-        workspaceRoots.remove(root)
-        updateExclusions()
-    }
-
     private fun findSourceFiles(root: Path): Set<URI> {
         val sourceMatcher = FileSystems.getDefault().getPathMatcher("glob:*.{kt,kts}")
         return SourceExclusions(listOf(root), scriptsConfig)
@@ -178,6 +168,16 @@ class SourceFiles(
             .filter { sourceMatcher.matches(it.fileName) }
             .map(Path::toUri)
             .toSet()
+    }
+
+    fun removeWorkspaceRoot(root: Path) {
+        val rmSources = files.keys.filter { it.filePath?.startsWith(root) ?: false }
+
+        LOG.info("Removing {} under {} to source path", describeURIs(rmSources), root)
+
+        files.removeAll(rmSources)
+        workspaceRoots.remove(root)
+        updateExclusions()
     }
 
     fun updateExclusions() {
@@ -230,10 +230,3 @@ private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): S
     }
 }
 
-private fun logAdded(sources: Collection<URI>, rootPath: Path?) {
-    LOG.info("Adding {} under {} to source path", describeURIs(sources), rootPath)
-}
-
-private fun logRemoved(sources: Collection<URI>, rootPath: Path?) {
-    LOG.info("Removing {} under {} to source path", describeURIs(sources), rootPath)
-}

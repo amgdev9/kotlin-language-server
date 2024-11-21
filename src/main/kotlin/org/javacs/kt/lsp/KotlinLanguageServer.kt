@@ -23,6 +23,7 @@ import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
 import java.io.Closeable
+import java.io.File
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletableFuture.completedFuture
@@ -61,11 +62,11 @@ class KotlinLanguageServer(
         }
 
     companion object {
-        val VERSION: String? = System.getProperty("kotlinLanguageServer.version")
+        val VERSION = "1.0.0" 
     }
 
     init {
-        LOG.info("Kotlin Language Server: Version ${VERSION ?: "?"}")
+        LOG.info("Kotlin Language Server: Version $VERSION")
     }
 
     override fun connect(client: LanguageClient) {
@@ -154,7 +155,12 @@ class KotlinLanguageServer(
     }
 
     private fun connectLoggingBackend() {
+        val logFile = File("/home/amg/Projects/kotlin-language-server/log.txt")
+        if(logFile.exists()) logFile.delete()
+        logFile.createNewFile()
+        
         val backend: (LogMessage) -> Unit = {
+            logFile.appendText("${it.level}: ${it.message}\n")
             client.logMessage(MessageParams().apply {
                 type = it.level.toLSPMessageType()
                 message = it.message

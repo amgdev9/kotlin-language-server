@@ -24,7 +24,7 @@ fun findKotlinStdlib(): Path? =
 private fun findLocalArtifact(group: String, artifact: String) =
     tryResolving("$artifact using Gradle") { tryFindingLocalArtifactUsing(group, artifact, findLocalArtifactDirUsingGradle(group, artifact)) }
 
-private fun tryFindingLocalArtifactUsing(@Suppress("UNUSED_PARAMETER") group: String, artifact: String, artifactDirResolution: LocalArtifactDirectoryResolution): Path? {
+private fun tryFindingLocalArtifactUsing(group: String, artifact: String, artifactDirResolution: LocalArtifactDirectoryResolution): Path? {
     val isCorrectArtifact = BiPredicate<Path, BasicFileAttributes> { file, _ ->
         val name = file.fileName.toString()
         when (artifactDirResolution.buildTool) {

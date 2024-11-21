@@ -1,2 +1,2 @@
-- Redireccionar logs a archivo temporal y ver por que tarda tanto en arrancar
-
+- Obtener archivos .kt del proyecto a partir de gradle (no usar SourceExclusions)
+- Optimizar indexado

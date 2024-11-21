@@ -6,7 +6,7 @@ import java.nio.file.Path
 import java.nio.file.PathMatcher
 import java.nio.file.FileSystems
 
-fun defaultClassPathResolver(workspaceRoots: Collection<Path>, db: Database? = null): ClassPathResolver {
+fun defaultClassPathResolver(workspaceRoots: Collection<Path>, db: Database?): ClassPathResolver {
     val childResolver = WithStdlibResolver(
         ShellClassPathResolver.global(workspaceRoots.firstOrNull())
             .or(workspaceRoots.asSequence().flatMap { workspaceResolvers(it) }.joined)
