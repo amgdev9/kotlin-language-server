@@ -8,12 +8,10 @@ import org.javacs.kt.util.withCustomStdout
 import org.javacs.kt.LOG
 import org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler
 
-class FernflowerDecompiler : Decompiler {
+class FernflowerDecompiler {
 	private val outputDir by lazy(::createOutputDirectory)
 
-	override fun decompileClass(compiledClass: Path) = decompile(compiledClass, ".java")
-
-	override fun decompileJar(compiledJar: Path) = decompile(compiledJar, ".jar")
+	fun decompileClass(compiledClass: Path) = decompile(compiledClass, ".java")
 
 	fun decompile(compiledClassOrJar: Path, newFileExtension: String): Path {
 		invokeDecompiler(compiledClassOrJar, outputDir)

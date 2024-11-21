@@ -20,7 +20,7 @@ class ClassContentProvider(
     private val cp: CompilerClassPath,
     private val tempDir: TemporaryFolder,
     private val sourceArchiveProvider: SourceArchiveProvider,
-    private val decompiler: Decompiler = FernflowerDecompiler()
+    private val decompiler: FernflowerDecompiler = FernflowerDecompiler()
 ) {
     /** Maps recently used (source-)KLS-URIs to their source contents (e.g. decompiled code) and the file extension. */
     private val cachedContents = object : LinkedHashMap<String, Pair<String, String>>() {
@@ -59,5 +59,5 @@ class ClassContentProvider(
             "java" -> if (uri.source) Pair(uri.readContents(), "java") else Pair(uri.readContents(), "kt")
             else -> Pair(uri.readContents(), "kt") // e.g. for Kotlin source files
         }
-    } catch (e: FileNotFoundException) { null }
+    } catch (_: FileNotFoundException) { null }
 }

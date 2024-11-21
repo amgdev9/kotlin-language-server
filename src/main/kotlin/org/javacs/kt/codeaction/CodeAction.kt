@@ -17,15 +17,11 @@ fun codeActions(file: CompiledFile, index: SymbolIndex, range: Range, context: C
     val requestedKinds = context.only ?: listOf(CodeActionKind.Refactor, CodeActionKind.QuickFix)
     return requestedKinds.map {
         when (it) {
-            CodeActionKind.Refactor -> getRefactors(file, range)
+            CodeActionKind.Refactor -> emptyList()
             CodeActionKind.QuickFix -> getQuickFixes(file, index, range, context.diagnostics)
             else -> listOf()
         }
     }.flatten()
-}
-
-fun getRefactors(file: CompiledFile, range: Range): List<Either<Command, CodeAction>> {
-    return emptyList()
 }
 
 fun getQuickFixes(file: CompiledFile, index: SymbolIndex, range: Range, diagnostics: List<Diagnostic>): List<Either<Command, CodeAction>> {

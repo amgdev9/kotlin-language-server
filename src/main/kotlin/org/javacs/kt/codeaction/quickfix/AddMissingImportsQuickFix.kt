@@ -23,7 +23,7 @@ class AddMissingImportsQuickFix: QuickFix {
 
             getImportAlternatives(symbolName, file.parse, index).map { (importStr, edit) ->
                 val codeAction = CodeAction()
-                codeAction.title = "Import ${importStr}"
+                codeAction.title = "Import $importStr"
                 codeAction.kind = CodeActionKind.QuickFix
                 codeAction.diagnostics = listOf(diagnostic)
                 codeAction.edit = WorkspaceEdit(mapOf(uri to listOf(edit)))
