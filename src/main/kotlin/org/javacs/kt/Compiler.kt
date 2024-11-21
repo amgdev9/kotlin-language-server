@@ -52,8 +52,10 @@ import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.host.configurationDependencies
 import kotlin.script.experimental.jvm.defaultJvmScriptingHostConfiguration
 import kotlin.script.experimental.jvm.JvmDependency
-import org.javacs.kt.util.LoggingMessageCollector
 import org.jetbrains.kotlin.cli.common.output.writeAllTo
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.codegen.ClassBuilderFactories
 import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
 import org.jetbrains.kotlin.codegen.state.GenerationState
@@ -502,7 +504,7 @@ class Compiler(
     fun compileKtFiles(files: Collection<KtFile>, sourcePath: Collection<KtFile>, kind: CompilationKind = CompilationKind.DEFAULT): Pair<BindingContext, ModuleDescriptor> {
         if (kind == CompilationKind.BUILD_SCRIPT) {
             // Print the (legacy) script template used by the compiled Kotlin DSL build file
-            files.forEach { LOG.debug { "$it -> ScriptDefinition: ${it.findScriptDefinition()?.asLegacyOrNull<KotlinScriptDefinition>()?.template?.simpleName}" } }
+            files.forEach { LOG.debug("$it -> ScriptDefinition: ${it.findScriptDefinition()?.asLegacyOrNull<KotlinScriptDefinition>()?.template?.simpleName}") }
         }
 
         compileLock.withLock {
@@ -583,3 +585,14 @@ private fun describeExpression(expression: String): String = expression.lines().
         (lines.take(3) + listOf("...", lines.last())).joinToString(separator = "\n")
     }
 }
+
+private object LoggingMessageCollector: MessageCollector {
+	override fun clear() {}
+
+	override fun report(severity: CompilerMessageSeverity, message: String, location: CompilerMessageSourceLocation?) {
+		LOG.debug("Kotlin compiler: [{}] {} @ {}", severity, message, location)
+	}
+
+	override fun hasErrors() = false
+}
+

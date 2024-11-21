@@ -1,7 +1,6 @@
 package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
-import org.javacs.kt.util.execAndReadStdoutAndStderr
 import org.javacs.kt.util.findCommandOnPath
 import java.io.File
 import java.nio.file.Files
@@ -112,3 +111,19 @@ private fun parseGradleCLIDependencies(output: String): Set<Path>? {
         .mapNotNull { Paths.get(it.groups[1]?.value) }
     return artifacts.toSet()
 }
+
+private fun execAndReadStdoutAndStderr(shellCommand: List<String>, directory: Path): Pair<String, String> {
+    val process = ProcessBuilder(shellCommand).directory(directory.toFile()).start()
+    val stdout = process.inputStream
+    val stderr = process.errorStream
+    var output = ""
+    var errors = ""
+    val outputThread = Thread { stdout.bufferedReader().use { output += it.readText() } }
+    val errorsThread = Thread { stderr.bufferedReader().use { errors += it.readText() } }
+    outputThread.start()
+    errorsThread.start()
+    outputThread.join()
+    errorsThread.join()
+    return Pair(output, errors)
+}
+

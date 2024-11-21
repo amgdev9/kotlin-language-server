@@ -17,17 +17,14 @@ fun defaultClassPathResolver(workspaceRoots: Collection<Path>, db: Database?): C
 
 /** Searches the workspace for all files that could provide classpath info. */
 private fun workspaceResolvers(workspaceRoot: Path): Sequence<ClassPathResolver> {
-    val ignored: List<PathMatcher> = ignoredPathPatterns(workspaceRoot, workspaceRoot.resolve(".gitignore"))
-    return folderResolvers(workspaceRoot, ignored).asSequence()
-}
-
-/** Searches the folder for all build-files. */
-private fun folderResolvers(root: Path, ignored: List<PathMatcher>): Collection<ClassPathResolver> =
-    root.toFile()
+    val ignored = ignoredPathPatterns(workspaceRoot, workspaceRoot.resolve(".gitignore"))
+    return workspaceRoot.toFile()
         .walk()
         .onEnter { file -> ignored.none { it.matches(file.toPath()) } }
         .mapNotNull { asClassPathProvider(it.toPath()) }
         .toList()
+        .asSequence()
+}
 
 /** Tries to read glob patterns from a gitignore. */
 private fun ignoredPathPatterns(root: Path, gitignore: Path): List<PathMatcher> =

@@ -97,14 +97,6 @@ class Logger {
     fun deepTrace(msg: String, vararg placeholders: Any?) =
         logWithPlaceholdersAt(LogLevel.DEEP_TRACE, msg, placeholders)
 
-    // Convenience logging methods using inlined lambdas
-
-    inline fun warn(msg: () -> String) = logWithLambdaAt(LogLevel.WARN, msg)
-
-    inline fun info(msg: () -> String) = logWithLambdaAt(LogLevel.INFO, msg)
-
-    inline fun debug(msg: () -> String) = logWithLambdaAt(LogLevel.DEBUG, msg)
-
     fun connectJavaUtilLogFrontend() {
         val rootLogger = java.util.logging.Logger.getLogger("")
         rootLogger.addHandler(JULRedirector(this))

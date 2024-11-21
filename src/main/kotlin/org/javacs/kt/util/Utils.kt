@@ -5,21 +5,6 @@ import java.io.PrintStream
 import java.nio.file.Path
 import java.nio.file.Paths
 
-fun execAndReadStdoutAndStderr(shellCommand: List<String>, directory: Path): Pair<String, String> {
-    val process = ProcessBuilder(shellCommand).directory(directory.toFile()).start()
-    val stdout = process.inputStream
-    val stderr = process.errorStream
-    var output = ""
-    var errors = ""
-    val outputThread = Thread { stdout.bufferedReader().use { output += it.readText() } }
-    val errorsThread = Thread { stderr.bufferedReader().use { errors += it.readText() } }
-    outputThread.start()
-    errorsThread.start()
-    outputThread.join()
-    errorsThread.join()
-    return Pair(output, errors)
-}
-
 inline fun withCustomStdout(delegateOut: PrintStream, task: () -> Unit) {
     val actualOut = System.out
     System.setOut(delegateOut)
@@ -62,17 +47,4 @@ fun <T> emptyResult(message: String): List<T> = noResult(message, emptyList())
 
 fun <T> nullResult(message: String): T? = noResult(message, null)
 
-inline fun <T> tryResolving(what: String, resolver: () -> T?): T? {
-    try {
-        val resolved = resolver()
-        if (resolved == null) {
-            LOG.info("Could not resolve {} as it is null", what)
-            return null
-        }
-        LOG.info("Successfully resolved {} to {}", what, resolved)
-        return resolved
-    } catch (e: Exception) {
-        LOG.info("Could not resolve {}: {}", what, e.message)
-        return null
-    }
-}
+

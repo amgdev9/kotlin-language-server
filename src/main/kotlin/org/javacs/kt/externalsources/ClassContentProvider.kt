@@ -14,9 +14,10 @@ import java.util.LinkedHashMap
  */
 class ClassContentProvider(
     private val tempDir: TemporaryFolder,
-    private val sourceArchiveProvider: SourceArchiveProvider,
-    private val decompiler: Decompiler = Decompiler()
+    private val sourceArchiveProvider: SourceArchiveProvider
 ) {
+    private val decompiler = Decompiler()
+
     /** Maps recently used (source-)KLS-URIs to their source contents (e.g. decompiled code) and the file extension. */
     private val cachedContents = object : LinkedHashMap<String, Pair<String, String>>() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<String, String>>) = size > 5

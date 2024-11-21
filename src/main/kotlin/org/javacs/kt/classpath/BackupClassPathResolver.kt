@@ -5,7 +5,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.function.BiPredicate
-import org.javacs.kt.util.tryResolving
 import org.javacs.kt.util.findCommandOnPath
 import org.javacs.kt.LOG
 import java.nio.file.Paths
@@ -109,6 +108,23 @@ private fun compareVersions(left: Path, right: Path): Int {
 
     return -leftVersion.size.compareTo(rightVersion.size)
 }
+
 private fun extractVersion(artifactVersionDir: Path): List<String> {
     return artifactVersionDir.toString().split(".")
 }
+
+private inline fun <T> tryResolving(what: String, resolver: () -> T?): T? {
+    try {
+        val resolved = resolver()
+        if (resolved == null) {
+            LOG.info("Could not resolve {} as it is null", what)
+            return null
+        }
+        LOG.info("Successfully resolved {} to {}", what, resolved)
+        return resolved
+    } catch (e: Exception) {
+        LOG.info("Could not resolve {}: {}", what, e.message)
+        return null
+    }
+}
+

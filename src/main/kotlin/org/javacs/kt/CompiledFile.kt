@@ -118,7 +118,7 @@ class CompiledFile(
                 .filterIsInstance<KtDeclaration>()
                 .firstOrNull { it.textRange.contains(oldChanged) } ?: parse
 
-        LOG.debug { "PSI path: ${psi.parentsWithSelf.toList()}" }
+        LOG.debug("PSI path: ${psi.parentsWithSelf.toList()}")
 
         val (surroundingContent, offset) = contentAndOffsetFromElement(psi, oldParent, asReference)
         val padOffset = " ".repeat(offset)

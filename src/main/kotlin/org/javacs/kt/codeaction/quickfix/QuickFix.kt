@@ -7,7 +7,6 @@ import org.eclipse.lsp4j.Range
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.javacs.kt.CompiledFile
 import org.javacs.kt.index.SymbolIndex
-import org.javacs.kt.util.isSubrangeOf
 import org.jetbrains.kotlin.diagnostics.Diagnostic as KotlinDiagnostic
 
 interface QuickFix {
@@ -20,3 +19,8 @@ fun diagnosticMatch(diagnostic: Diagnostic, range: Range, diagnosticTypes: Set<S
 
 fun diagnosticMatch(diagnostic: KotlinDiagnostic, startCursor: Int, endCursor: Int, diagnosticTypes: Set<String>): Boolean =
     diagnostic.textRanges.any { it.startOffset <= startCursor && it.endOffset >= endCursor } && diagnosticTypes.contains(diagnostic.factory.name)
+
+// checks if the current range is within the other range (same lines, within the character bounds)
+fun Range.isSubrangeOf(otherRange: Range): Boolean =
+    otherRange.start.line == this.start.line && otherRange.end.line == this.end.line &&
+        otherRange.start.character <= this.start.character && otherRange.end.character >= this.end.character
