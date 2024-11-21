@@ -14,20 +14,20 @@ fun convertDiagnostic(diagnostic: KotlinDiagnostic): List<Pair<URI, LangServerDi
     val content = diagnostic.psiFile.text
 
     return diagnostic.textRanges.map {
-        val d = LangServerDiagnostic(
+        val item = LangServerDiagnostic(
             range(content, it),
             message(diagnostic),
             severity(diagnostic.severity),
             "kotlin",
             code(diagnostic)
-        ).apply {
-            val factoryName = diagnostic.factory.name
-            tags = mutableListOf<DiagnosticTag>()
+        )
+        val factoryName = diagnostic.factory.name
 
-            if ("UNUSED_"     in factoryName) tags.add(DiagnosticTag.Unnecessary)
-            if ("DEPRECATION" in factoryName) tags.add(DiagnosticTag.Deprecated)
-        }
-        Pair(uri, d)
+        item.tags = mutableListOf<DiagnosticTag>()
+        if ("UNUSED_" in factoryName) item.tags.add(DiagnosticTag.Unnecessary)
+        if ("DEPRECATION" in factoryName) item.tags.add(DiagnosticTag.Deprecated)
+
+        Pair(uri, item)
     }
 }
 
@@ -43,4 +43,3 @@ private fun severity(severity: Severity): DiagnosticSeverity =
             Severity.ERROR -> DiagnosticSeverity.Error
             Severity.WARNING -> DiagnosticSeverity.Warning
         }
-

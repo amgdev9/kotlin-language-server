@@ -1,0 +1,2 @@
+- Refactor a todo
+- Redireccionar logs a archivo temporal

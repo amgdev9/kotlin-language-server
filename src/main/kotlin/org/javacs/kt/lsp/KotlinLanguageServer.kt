@@ -114,7 +114,8 @@ class KotlinLanguageServer(
         databaseService.setup(storagePath)
 
         val clientCapabilities = params.capabilities
-        config.completion.snippets.enabled = clientCapabilities?.textDocument?.completion?.completionItem?.snippetSupport == true
+        config.completion.snippets.enabled =
+            clientCapabilities?.textDocument?.completion?.completionItem?.snippetSupport == true
 
         if (clientCapabilities?.window?.workDoneProgress == true) {
             progressFactory = LanguageClientProgress.Factory(client)
@@ -124,19 +125,16 @@ class KotlinLanguageServer(
             serverCapabilities.renameProvider = Either.forRight(RenameOptions(false))
         }
 
-        val folders = params.workspaceFolders?.takeIf { it.isNotEmpty() }
-            ?: params.rootUri?.let(::WorkspaceFolder)?.let(::listOf)
-            ?: params.rootPath?.let(Paths::get)?.toUri()?.toString()?.let(::WorkspaceFolder)?.let(::listOf)
-            ?: listOf()
-
         val progress = params.workDoneToken?.let { LanguageClientProgress("Workspace folders", it, client) }
 
+        val folders = params.workspaceFolders
         folders.forEachIndexed { i, folder ->
             LOG.info("Adding workspace folder {}", folder.name)
+
             val progressPrefix = "[${i + 1}/${folders.size}] ${folder.name ?: ""}"
             val progressPercent = (100 * i) / folders.size
-
             progress?.update("$progressPrefix: Updating source path", progressPercent)
+
             val root = Paths.get(parseURI(folder.uri))
             sourceFiles.addWorkspaceRoot(root)
 
@@ -152,7 +150,6 @@ class KotlinLanguageServer(
         textDocuments.lintAll()
 
         val serverInfo = ServerInfo("Kotlin Language Server", VERSION)
-
         InitializeResult(serverCapabilities, serverInfo)
     }
 

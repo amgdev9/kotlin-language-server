@@ -4,8 +4,8 @@ import org.javacs.kt.CompilerClassPath
 import java.nio.file.Path
 
 class ClassPathSourceArchiveProvider(
-    private val cp: CompilerClassPath
+    private val classPath: CompilerClassPath
 ) : SourceArchiveProvider {
     override fun fetchSourceArchive(compiledArchive: Path): Path? =
-        cp.classPath.firstOrNull { it.compiledJar == compiledArchive }?.sourceJar
+        classPath.classPath.firstOrNull { it.compiledJar == compiledArchive }?.sourceJar
 }

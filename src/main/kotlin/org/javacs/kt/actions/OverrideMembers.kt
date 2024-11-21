@@ -111,9 +111,8 @@ private fun MemberDescriptor.canBeOverriden() = (Modality.ABSTRACT == this.modal
 
 // interfaces are ClassDescriptors by default. When calling AbstractClass super methods, we get a ClassConstructorDescriptor
 fun getClassDescriptor(descriptor: DeclarationDescriptor?): ClassDescriptor? =
-        if (descriptor is ClassDescriptor) {
-            descriptor
-        } else if (descriptor is ClassConstructorDescriptor) {
+    descriptor as? ClassDescriptor
+        ?: if (descriptor is ClassConstructorDescriptor) {
             descriptor.containingDeclaration
         } else {
             null
@@ -155,42 +154,40 @@ private fun parametersMatch(
         function: KtNamedFunction,
         functionDescriptor: FunctionDescriptor
 ): Boolean {
-    if (function.valueParameters.size == functionDescriptor.valueParameters.size) {
-        for (index in 0 until function.valueParameters.size) {
-            if (function.valueParameters[index].name !=
-                    functionDescriptor.valueParameters[index].name.asString()
-            ) {
-                return false
-            } else if (function.valueParameters[index].typeReference?.typeName() !=
-                            functionDescriptor.valueParameters[index]
-                                    .type
-                                    .unwrappedType()
-                                    .toString() && function.valueParameters[index].typeReference?.typeName() != null
-            ) {
-                // Any and Any? seems to be null for Kt* psi objects for some reason? At least for equals
-                // TODO: look further into this
-                
-                // Note: Since we treat Java overrides as non nullable by default, the above test
-                // will fail when the user has made the type nullable.
-                // TODO: look into this
-                return false
-            }
-        }
+    if (function.valueParameters.size != functionDescriptor.valueParameters.size) return false
 
-        if (function.typeParameters.size == functionDescriptor.typeParameters.size) {
-            for (index in 0 until function.typeParameters.size) {
-                if (function.typeParameters[index].variance !=
-                        functionDescriptor.typeParameters[index].variance
-                ) {
-                    return false
-                }
-            }
-        }
+    for (index in 0 until function.valueParameters.size) {
+        if (function.valueParameters[index].name !=
+            functionDescriptor.valueParameters[index].name.asString()
+        ) {
+            return false
+        } else if (function.valueParameters[index].typeReference?.typeName() !=
+            functionDescriptor.valueParameters[index]
+                .type
+                .unwrappedType()
+                .toString() && function.valueParameters[index].typeReference?.typeName() != null
+        ) {
+            // Any and Any? seems to be null for Kt* psi objects for some reason? At least for equals
+            // TODO: look further into this
 
-        return true
+            // Note: Since we treat Java overrides as non nullable by default, the above test
+            // will fail when the user has made the type nullable.
+            // TODO: look into this
+            return false
+        }
     }
 
-    return false
+    if (function.typeParameters.size == functionDescriptor.typeParameters.size) {
+        for (index in 0 until function.typeParameters.size) {
+            if (function.typeParameters[index].variance !=
+                functionDescriptor.typeParameters[index].variance
+            ) {
+                return false
+            }
+        }
+    }
+
+    return true
 }
 
 private fun KtTypeReference.typeName(): String? =
@@ -204,14 +201,12 @@ private fun KtTypeReference.typeName(): String? =
 fun createFunctionStub(function: FunctionDescriptor): String {
     val name = function.name
     val arguments =
-            function.valueParameters
-                    .map { argument ->
-                        val argumentName = argument.name
-                        val argumentType = argument.type.unwrappedType()
+        function.valueParameters.joinToString(", ") { argument ->
+            val argumentName = argument.name
+            val argumentType = argument.type.unwrappedType()
 
-                        "$argumentName: $argumentType"
-                    }
-                    .joinToString(", ")
+            "$argumentName: $argumentType"
+        }
     val returnType = function.returnType?.unwrappedType()?.toString()?.takeIf { "Unit" != it }
 
     return "override fun $name($arguments)${returnType?.let { ": $it" } ?: ""} { }"
@@ -247,22 +242,24 @@ fun getDeclarationPadding(file: CompiledFile, kotlinClass: KtClass): String {
     return " ".repeat(paddingSize)
 }
 
-fun getNewMembersStartPosition(file: CompiledFile, kotlinClass: KtClass): Position? =
-        // If the class is not empty, the new member will be put right after the last declaration
-        if (kotlinClass.declarations.isNotEmpty()) {
-            val lastFunctionEndOffset = kotlinClass.declarations.last().endOffset
-            position(file.content, lastFunctionEndOffset)
-        } else { // Otherwise, the member is put at the beginning of the class
-            val body = kotlinClass.body
-            if (body != null) {
-                position(file.content, body.startOffset + 1)
-            } else {
-                // function has no body. We have to create one. New position is right after entire
-                // kotlin class text (with space)
-                val newPosCorrectLine = position(file.content, kotlinClass.startOffset + 1)
-                newPosCorrectLine.character = (kotlinClass.text.length + 2)
-                newPosCorrectLine
-            }
-        }
+fun getNewMembersStartPosition(file: CompiledFile, kotlinClass: KtClass): Position? {
+    // If the class is not empty, the new member will be put right after the last declaration
+    if (kotlinClass.declarations.isNotEmpty()) {
+        val lastFunctionEndOffset = kotlinClass.declarations.last().endOffset
+        return position(file.content, lastFunctionEndOffset)
+    }
 
-fun KtClass.hasNoBody() = null == this.body
+    // Otherwise, the member is put at the beginning of the class
+    val body = kotlinClass.body
+    if (body != null) {
+        return position(file.content, body.startOffset + 1)
+    }
+
+    // function has no body. We have to create one. New position is right after entire
+    // kotlin class text (with space)
+    val newPosCorrectLine = position(file.content, kotlinClass.startOffset + 1)
+    newPosCorrectLine.character = (kotlinClass.text.length + 2)
+    return newPosCorrectLine
+}
+
+fun KtClass.hasNoBody() = this.body == null

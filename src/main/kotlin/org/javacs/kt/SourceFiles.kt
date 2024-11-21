@@ -142,10 +142,8 @@ class SourceFiles(
 
     private fun languageOf(uri: URI): Language? {
         val fileName = uri.filePath?.fileName?.toString() ?: return null
-        return when {
-            fileName.endsWith(".kt") || fileName.endsWith(".kts") -> KotlinLanguage.INSTANCE
-            else -> null
-        }
+        if (fileName.endsWith(".kt") || fileName.endsWith(".kts")) return KotlinLanguage.INSTANCE
+        return null
     }
 
     fun addWorkspaceRoot(root: Path) {
