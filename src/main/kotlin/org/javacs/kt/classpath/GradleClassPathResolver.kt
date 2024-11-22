@@ -6,16 +6,12 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import org.javacs.kt.util.userHome
 
 internal class GradleClassPathResolver(private val path: Path): ClassPathResolver {
     private val projectDirectory: Path get() = path.parent
 
     override val classpath: Set<ClassPathEntry> get() {
-        val script = "projectClassPathFinder.gradle"
-        val task = "kotlinLSPProjectDeps"
-
-        val classpath = readDependenciesViaGradleCLI(projectDirectory, script, task)
+        val classpath = readDependenciesViaGradleCLI(projectDirectory)
         if (classpath.isNotEmpty()) {
             LOG.info("Successfully resolved dependencies for '${projectDirectory.fileName}' using Gradle")
         }
@@ -34,17 +30,13 @@ internal class GradleClassPathResolver(private val path: Path): ClassPathResolve
     }
 }
 
-private fun createPathOrNull(envVar: String): Path? = System.getenv(envVar)?.let(Paths::get)
+private fun readDependenciesViaGradleCLI(projectDirectory: Path): Set<Path> {
+    LOG.info("Resolving dependencies for '{}' through Gradle's CLI using tasks {}...", projectDirectory.fileName, "kotlinLSPProjectDeps")
 
-internal val gradleHome = createPathOrNull("GRADLE_USER_HOME") ?: userHome.resolve(".gradle")
-
-private fun readDependenciesViaGradleCLI(projectDirectory: Path, gradleScriptFilename: String, gradleTask: String): Set<Path> {
-    LOG.info("Resolving dependencies for '{}' through Gradle's CLI using tasks {}...", projectDirectory.fileName, gradleTask)
-
-    val tmpScript = gradleScriptToTempFile(gradleScriptFilename).toPath().toAbsolutePath()
+    val tmpScript = gradleScriptToTempFile("projectClassPathFinder.gradle").toPath().toAbsolutePath()
     val gradle = getGradleCommand(projectDirectory)
 
-    val command = "$gradle -I $tmpScript $gradleTask --console=plain"
+    val command = "$gradle -I $tmpScript kotlinLSPProjectDeps --console=plain"
     val dependencies = findGradleCLIDependencies(command, projectDirectory)
 
     if(dependencies != null) {

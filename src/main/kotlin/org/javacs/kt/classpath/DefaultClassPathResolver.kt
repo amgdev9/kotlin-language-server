@@ -19,9 +19,7 @@ fun defaultClassPathResolver(workspaceRoot: Path, db: Database?): ClassPathResol
     val buildGradleFile = getBuildGradleFile(workspaceRoot)
     if(buildGradleFile == null) throw RuntimeException("build.gradle file not found")
 
-    val childResolver = WithStdlibResolver(
-        GradleClassPathResolver.maybeCreate(buildGradleFile)!!
-    )
+    val childResolver = GradleClassPathResolver.maybeCreate(buildGradleFile)!!
 
     if (db != null) return CachedClassPathResolver(childResolver, db)
     return childResolver

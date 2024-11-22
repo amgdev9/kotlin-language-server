@@ -1,7 +1,6 @@
 package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
-import java.nio.file.Path
 
 fun getClasspathOrEmpty(it: ClassPathResolver): Set<ClassPathEntry> {
     try {
