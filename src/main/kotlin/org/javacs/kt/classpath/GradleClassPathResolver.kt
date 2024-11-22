@@ -23,6 +23,7 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
             .apply { if (isNotEmpty()) LOG.info("Successfully resolved dependencies for '${projectDirectory.fileName}' using Gradle") }
             .map { ClassPathEntry(it, null) }.toSet()
     }
+    
     override val buildScriptClasspath: Set<Path> get() {
         if (!includeKotlinDSL) return emptySet()
 
@@ -41,6 +42,7 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
     companion object {
         fun maybeCreate(file: Path): GradleClassPathResolver? {
             if(!file.endsWith("build.gradle") && !file.endsWith("build.gradle.kts")) return null
+
             return GradleClassPathResolver(file, includeKotlinDSL = file.toString().endsWith(".kts"))
         }
     }
@@ -52,7 +54,7 @@ private fun gradleScriptToTempFile(scriptName: String): File {
     LOG.debug("Creating temporary gradle file {}", gradleConfigFile.absolutePath)
 
     gradleConfigFile.bufferedWriter().use { configWriter ->
-        GradleClassPathResolver::class.java.getResourceAsStream("/$scriptName").bufferedReader().use { configReader ->
+        GradleClassPathResolver::class.java.getResourceAsStream("/$scriptName")!!.bufferedReader().use { configReader ->
             configReader.copyTo(configWriter)
         }
     }

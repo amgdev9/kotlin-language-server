@@ -33,6 +33,21 @@ import org.jetbrains.kotlin.resolve.calls.util.isSingleUnderscore
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.error.ErrorType
 
+fun provideHints(file: CompiledFile, config: Configuration.InlayHints): List<InlayHint> {
+    val res = mutableListOf<InlayHint>()
+    for (node in file.parse.preOrderTraversal().asIterable()) {
+        when (node) {
+            is KtNamedFunction -> functionHint(res, node, file, config)
+            is KtLambdaArgument -> lambdaValueParamHints(res, node, file, config)
+            is KtDotQualifiedExpression -> chainedExpressionHints(res, node, file, config)
+            is KtCallExpression -> callableArgNameHints(res, node, file, config)
+            is KtDestructuringDeclaration -> destructuringVarHints(res, node, file, config)
+            is KtProperty -> declarationHint(res, node, file, config)
+        }
+    }
+    return res
+}
+
 private fun PsiElement.determineType(ctx: BindingContext): KotlinType? =
     when (this) {
         is KtNamedFunction -> {
@@ -207,21 +222,6 @@ private fun functionHint(
         val hint = node.hintBuilder(InlayKind.TypeHint, file) ?: return
         acc.add(hint)
     }
-}
-
-fun provideHints(file: CompiledFile, config: Configuration.InlayHints): List<InlayHint> {
-    val res = mutableListOf<InlayHint>()
-    for (node in file.parse.preOrderTraversal().asIterable()) {
-        when (node) {
-            is KtNamedFunction -> functionHint(res, node, file, config)
-            is KtLambdaArgument -> lambdaValueParamHints(res, node, file, config)
-            is KtDotQualifiedExpression -> chainedExpressionHints(res, node, file, config)
-            is KtCallExpression -> callableArgNameHints(res, node, file, config)
-            is KtDestructuringDeclaration -> destructuringVarHints(res, node, file, config)
-            is KtProperty -> declarationHint(res, node, file, config)
-        }
-    }
-    return res
 }
 
 enum class InlayKind(val base: InlayHintKind) {
