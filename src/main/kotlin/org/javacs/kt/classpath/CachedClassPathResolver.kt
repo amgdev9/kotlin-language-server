@@ -24,10 +24,6 @@ private object ClassPathCacheEntry : IntIdTable() {
     val sourceJar = varchar("sourcejar", length = MAX_PATH_LENGTH).nullable()
 }
 
-private object BuildScriptClassPathCacheEntry : IntIdTable() {
-    val jar = varchar("jar", length = MAX_PATH_LENGTH)
-}
-
 class ClassPathMetadataCacheEntity(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<ClassPathMetadataCacheEntity>(ClassPathMetadataCache)
 
@@ -42,12 +38,6 @@ class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
     var sourceJar by ClassPathCacheEntry.sourceJar
 }
 
-class BuildScriptClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<BuildScriptClassPathCacheEntryEntity>(BuildScriptClassPathCacheEntry)
-
-    var jar by BuildScriptClassPathCacheEntry.jar
-}
-
 /** A classpath resolver that caches another resolver */
 internal class CachedClassPathResolver(
     private val wrapped: ClassPathResolver,
@@ -56,7 +46,7 @@ internal class CachedClassPathResolver(
     init {
         transaction(db) {
             SchemaUtils.createMissingTablesAndColumns(
-                ClassPathMetadataCache, ClassPathCacheEntry, BuildScriptClassPathCacheEntry
+                ClassPathMetadataCache, ClassPathCacheEntry
             )
         }
     }
@@ -73,20 +63,6 @@ internal class CachedClassPathResolver(
         updateClasspathCache(newClasspath, false)
 
         return newClasspath
-    }
-
-    override val buildScriptClasspath: Set<Path> get() {
-        if (!dependenciesChanged()) {
-            LOG.info("Build script classpath has not changed. Fetching from cache")
-            return cachedBuildScriptClassPathEntries
-        }
-
-        LOG.info("Cached build script classpath is outdated or not found. Resolving again")
-
-        val newBuildScriptClasspath = wrapped.buildScriptClasspath
-
-        updateBuildScriptClasspathCache(newBuildScriptClasspath)
-        return newBuildScriptClasspath
     }
 
     override val classpathWithSources: Set<ClassPathEntry> get() {
@@ -120,13 +96,6 @@ internal class CachedClassPathResolver(
             }
         }
 
-    private var cachedBuildScriptClassPathEntries: Set<Path>
-        get() = transaction(db) { BuildScriptClassPathCacheEntryEntity.all().map { Paths.get(it.jar) }.toSet() }
-        set(newEntries) = transaction(db) {
-            BuildScriptClassPathCacheEntry.deleteAll()
-            newEntries.map { BuildScriptClassPathCacheEntryEntity.new { jar = it.toString() } }
-        }
-
     private var cachedClassPathMetadata
         get() = transaction(db) {
             ClassPathMetadataCacheEntity.all().map {
@@ -150,15 +119,6 @@ internal class CachedClassPathResolver(
             cachedClassPathEntries = newClasspathEntries
             cachedClassPathMetadata = cachedClassPathMetadata?.copy(
                 includesSources = includesSources,
-                buildFileVersion = currentBuildFileVersion
-            ) ?: ClasspathMetadata()
-        }
-    }
-
-    private fun updateBuildScriptClasspathCache(newClasspath: Set<Path>) {
-        transaction(db) {
-            cachedBuildScriptClassPathEntries = newClasspath
-            cachedClassPathMetadata = cachedClassPathMetadata?.copy(
                 buildFileVersion = currentBuildFileVersion
             ) ?: ClasspathMetadata()
         }

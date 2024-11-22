@@ -12,20 +12,9 @@ fun getClasspathOrEmpty(it: ClassPathResolver): Set<ClassPathEntry> {
     }
 }
 
-fun getBuildScriptClasspathOrEmpty(it: ClassPathResolver): Set<Path> {
-    try {
-        return it.buildScriptClasspath
-    } catch (e: Exception) {
-        LOG.warn("Could not resolve buildscript classpath: {}", e.message)
-        return emptySet<Path>()
-    }
-}
-
 /** A source for creating class paths */
 interface ClassPathResolver {
     val classpath: Set<ClassPathEntry> // may throw exceptions
-    val buildScriptClasspath: Set<Path>
-        get() = emptySet<Path>()
     val classpathWithSources: Set<ClassPathEntry> get() = classpath
 
     /**

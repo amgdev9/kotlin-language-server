@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import org.javacs.kt.util.userHome
 
-internal class GradleClassPathResolver(private val path: Path, private val includeKotlinDSL: Boolean): ClassPathResolver {
+internal class GradleClassPathResolver(private val path: Path): ClassPathResolver {
     private val projectDirectory: Path get() = path.parent
 
     override val classpath: Set<ClassPathEntry> get() {
@@ -22,19 +22,6 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
 
         return classpath.asSequence().map { ClassPathEntry(it, null) }.toSet()
     }
-    
-    override val buildScriptClasspath: Set<Path> get() {
-        if (!includeKotlinDSL) return emptySet()
-
-        val script = "kotlinDSLClassPathFinder.gradle"
-        val task = "kotlinLSPKotlinDSLDeps"
-
-        val classpath = readDependenciesViaGradleCLI(projectDirectory, script, task)
-        if (classpath.isNotEmpty()) {
-            LOG.info("Successfully resolved build script dependencies for '${projectDirectory.fileName}' using Gradle")
-        }
-        return classpath
-    }
 
     override val currentBuildFileVersion: Long get() = path.toFile().lastModified()
 
@@ -42,7 +29,7 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
         fun maybeCreate(file: Path): GradleClassPathResolver? {
             if(!file.endsWith("build.gradle") && !file.endsWith("build.gradle.kts")) return null
 
-            return GradleClassPathResolver(file, includeKotlinDSL = file.toString().endsWith(".kts"))
+            return GradleClassPathResolver(file)
         }
     }
 }

@@ -11,7 +11,6 @@ import java.util.function.BiPredicate
 /** A classpath resolver that ensures another resolver contains the stdlib */
 internal class WithStdlibResolver(private val wrapped: ClassPathResolver) : ClassPathResolver {
     override val classpath: Set<ClassPathEntry> get() = wrapWithStdlibEntries(wrapped.classpath)
-    override val buildScriptClasspath: Set<Path> get() = wrapWithStdlib(wrapped.buildScriptClasspath)
     override val classpathWithSources: Set<ClassPathEntry> get() = wrapWithStdlibEntries(wrapped.classpathWithSources)
     override val currentBuildFileVersion: Long get() = wrapped.currentBuildFileVersion
 }
