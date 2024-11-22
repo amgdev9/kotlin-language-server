@@ -1,4 +1,3 @@
-- Migrar scripts gradle a kts
 - Eliminar interfaz ClasspathResolver
 - Obtener archivos .kt del proyecto a partir de gradle (no usar SourceExclusions)
 - Optimizar indexado
