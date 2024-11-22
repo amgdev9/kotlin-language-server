@@ -1,18 +1,19 @@
 package org.javacs.kt.lsp
 
-import org.eclipse.lsp4j.*
-import org.javacs.kt.util.AsyncExecutor
-import org.javacs.kt.util.parseURI
-import org.javacs.kt.actions.resolveMain
-import org.javacs.kt.actions.offset
-import org.javacs.kt.actions.listOverridableMembers
-import java.util.concurrent.CompletableFuture
-import java.nio.file.Paths
-import org.eclipse.lsp4j.jsonrpc.services.JsonSegment
+import org.eclipse.lsp4j.CodeAction
+import org.eclipse.lsp4j.TextDocumentIdentifier
+import org.eclipse.lsp4j.TextDocumentPositionParams
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
+import org.eclipse.lsp4j.jsonrpc.services.JsonSegment
 import org.javacs.kt.CompilerClassPath
 import org.javacs.kt.SourcePath
 import org.javacs.kt.URIContentProvider
+import org.javacs.kt.actions.listOverridableMembers
+import org.javacs.kt.actions.offset
+import org.javacs.kt.actions.resolveMain
+import org.javacs.kt.util.AsyncExecutor
+import org.javacs.kt.util.parseURI
+import java.util.concurrent.CompletableFuture
 
 @JsonSegment("kotlin")
 interface KotlinProtocolExtensions {
@@ -46,14 +47,8 @@ class KotlinProtocolExtensionService(
 
     override fun mainClass(textDocument: TextDocumentIdentifier): CompletableFuture<Map<String, Any?>> = async.compute {
         val fileUri = parseURI(textDocument.uri)
-        val filePath = Paths.get(fileUri)
-        
-        // we find the longest one in case both the root and submodule are included
-        val workspacePath = this@KotlinProtocolExtensionService.classPath.workspaceRoots.filter {
-            filePath.startsWith(it)
-        }.map {
-            it.toString()
-        }.maxByOrNull(String::length) ?: ""
+
+        val workspacePath = (this@KotlinProtocolExtensionService.classPath.workspaceRoot ?: "")
         
         val compiledFile = sourcePath.currentVersion(fileUri)
 

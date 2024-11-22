@@ -130,29 +130,30 @@ class KotlinLanguageServer(
         val progress = params.workDoneToken?.let { LanguageClientProgress("Workspace folders", it, client) }
 
         val folders = params.workspaceFolders
-        folders?.forEachIndexed { i, folder ->
-            LOG.info("Adding workspace folder {}", folder.name)
+        if (folders.size > 1) {
+            LOG.info("Detected ${folders.size} workspace folders, picking the first one...")
+        }
+        val folder = folders.first()
 
-            val progressPrefix = "[${i + 1}/${folders.size}] ${folder.name ?: ""}"
-            val progressPercent = (100 * i) / folders.size
-            progress?.update("$progressPrefix: Updating source path", progressPercent)
+        LOG.info("Adding workspace folder {}", folder.name)
 
-            val root = Paths.get(parseURI(folder.uri))
+        progress?.update("Updating source path", 25)
 
-            // TODO Use gradle to find source files
-            sourceFiles.addWorkspaceRoot(root)
+        val root = Paths.get(parseURI(folder.uri))
 
-            progress?.update("$progressPrefix: Updating class path", progressPercent)
+        // TODO Use gradle to find source files
+        sourceFiles.addWorkspaceRoot(root)
 
-            // This calls gradle and reinstantiates the compiler if classpath has changed
-            val refreshedCompiler = classPath.addWorkspaceRoot(root)
-            if (refreshedCompiler) {
-                progress?.update("$progressPrefix: Refreshing source path", progressPercent)
+        progress?.update("Updating class path", 50)
 
-                // Recompiles all source files, updating the index
-                // TODO Is this needed?
-                sourcePath.refresh()
-            }
+        // This calls gradle and reinstantiates the compiler if classpath has changed
+        val refreshedCompiler = classPath.addWorkspaceRoot(root)
+        if (refreshedCompiler) {
+            progress?.update("Refreshing source path", 75)
+
+            // Recompiles all source files, updating the index
+            // TODO Is this needed?
+            sourcePath.refresh()
         }
         progress?.close()
 

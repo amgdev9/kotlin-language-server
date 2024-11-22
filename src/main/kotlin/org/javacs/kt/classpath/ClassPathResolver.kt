@@ -2,7 +2,6 @@ package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
 import java.nio.file.Path
-import kotlin.math.max
 
 fun getClasspathOrEmpty(it: ClassPathResolver): Set<ClassPathEntry> {
     try {
@@ -38,24 +37,4 @@ interface ClassPathResolver {
      */
     val currentBuildFileVersion: Long
         get() = 1L
-
-    companion object {
-        /** A default empty classpath implementation */
-        val empty = object : ClassPathResolver {
-            override val classpath = emptySet<ClassPathEntry>()
-        }
-    }
-}
-
-val Sequence<ClassPathResolver>.joined get() = fold(ClassPathResolver.empty) { accum, next -> accum + next }
-
-/** Combines two classpath resolvers. */
-operator fun ClassPathResolver.plus(other: ClassPathResolver): ClassPathResolver = UnionClassPathResolver(this, other)
-
-/** The union of two class path resolvers. */
-internal class UnionClassPathResolver(val lhs: ClassPathResolver, val rhs: ClassPathResolver) : ClassPathResolver {
-    override val classpath get() = lhs.classpath + rhs.classpath
-    override val buildScriptClasspath get() = lhs.buildScriptClasspath + rhs.buildScriptClasspath
-    override val classpathWithSources get() = lhs.classpathWithSources + rhs.classpathWithSources
-    override val currentBuildFileVersion: Long get() = max(lhs.currentBuildFileVersion, rhs.currentBuildFileVersion)
 }

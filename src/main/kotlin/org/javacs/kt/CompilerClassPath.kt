@@ -21,7 +21,7 @@ class CompilerClassPath(
     private val codegenConfig: Configuration.Codegen,
     private val databaseService: DatabaseService
 ) : Closeable {
-    val workspaceRoots = mutableSetOf<Path>()
+    var workspaceRoot: Path? = null
 
     private val javaSourcePath = mutableSetOf<Path>()
     private val buildScriptClassPath = mutableSetOf<Path>()
@@ -52,7 +52,12 @@ class CompilerClassPath(
         updateJavaSourcePath: Boolean = true
     ): Boolean {
         // TODO: Fetch class path and build script class path concurrently (and asynchronously)
-        val resolver = defaultClassPathResolver(workspaceRoots, databaseService.db)
+        val workspaceRoot = this.workspaceRoot
+        if(workspaceRoot == null) {
+            throw RuntimeException("Workspace root not set")
+        }
+
+        val resolver = defaultClassPathResolver(workspaceRoot, databaseService.db)
         var refreshCompiler = updateJavaSourcePath
 
         if (updateClassPath) {
@@ -115,9 +120,13 @@ class CompilerClassPath(
     }
 
     fun addWorkspaceRoot(root: Path): Boolean {
+        if(workspaceRoot != null) {
+            throw RuntimeException("Workspace root was set")
+        }
+
         LOG.info("Searching for dependencies and Java sources in workspace root {}", root)
 
-        workspaceRoots.add(root)
+        workspaceRoot = root
         javaSourcePath.addAll(findJavaSourceFiles(root))
 
         return refresh()
@@ -126,7 +135,7 @@ class CompilerClassPath(
     fun removeWorkspaceRoot(root: Path): Boolean {
         LOG.info("Removing dependencies and Java source path from workspace root {}", root)
 
-        workspaceRoots.remove(root)
+        workspaceRoot = null
         javaSourcePath.removeAll(findJavaSourceFiles(root))
 
         return refresh()
