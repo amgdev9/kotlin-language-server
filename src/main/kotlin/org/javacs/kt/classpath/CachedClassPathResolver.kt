@@ -108,10 +108,12 @@ internal class CachedClassPathResolver(
     }
 
     override val classpath: Set<ClassPathEntry> get() {
-        cachedClassPathEntries.let { if (!dependenciesChanged()) {
-            LOG.info("Classpath has not changed. Fetching from cache")
-            return it
-        } }
+        cachedClassPathEntries.let {
+            if (!dependenciesChanged()) {
+                LOG.info("Classpath has not changed. Fetching from cache")
+                return it
+            }
+        }
 
         LOG.info("Cached classpath is outdated or not found. Resolving again")
 

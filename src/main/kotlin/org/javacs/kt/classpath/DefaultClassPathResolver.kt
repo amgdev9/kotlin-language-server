@@ -8,11 +8,12 @@ import java.nio.file.FileSystems
 
 fun defaultClassPathResolver(workspaceRoots: Collection<Path>, db: Database?): ClassPathResolver {
     val childResolver = WithStdlibResolver(
-        ShellClassPathResolver.global(workspaceRoots.firstOrNull())
+        ScriptClassPathResolver.global(workspaceRoots.firstOrNull())
             .or(workspaceRoots.asSequence().flatMap { workspaceResolvers(it) }.joined)
     ).or(BackupClassPathResolver)
 
-    return db?.let { CachedClassPathResolver(childResolver, it) } ?: childResolver
+    if(db != null) return CachedClassPathResolver(childResolver, db)
+    return childResolver
 }
 
 /** Searches the workspace for all files that could provide classpath info. */
@@ -50,4 +51,4 @@ private fun ignoredPathPatterns(root: Path, gitignore: Path): List<PathMatcher> 
 /** Tries to create a classpath resolver from a file using as many sources as possible */
 private fun asClassPathProvider(path: Path): ClassPathResolver? =
     GradleClassPathResolver.maybeCreate(path)
-        ?: ShellClassPathResolver.maybeCreate(path)
+        ?: ScriptClassPathResolver.maybeCreate(path)

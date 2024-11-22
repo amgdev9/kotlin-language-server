@@ -7,6 +7,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import org.javacs.kt.util.userHome
+import kotlin.toString
 
 private fun createPathOrNull(envVar: String): Path? = System.getenv(envVar)?.let(Paths::get)
 
@@ -25,24 +26,23 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
             .map { ClassPathEntry(it, null) }.toSet()
     }
     override val buildScriptClasspath: Set<Path> get() {
-        return if (includeKotlinDSL) {
-            val scripts = listOf("kotlinDSLClassPathFinder.gradle")
-            val tasks = listOf("kotlinLSPKotlinDSLDeps")
+        if (!includeKotlinDSL) return emptySet()
 
-            return readDependenciesViaGradleCLI(projectDirectory, scripts, tasks)
-                .apply { if (isNotEmpty()) LOG.info("Successfully resolved build script dependencies for '${projectDirectory.fileName}' using Gradle") }
-        } else {
-            emptySet()
-        }
+        val scripts = listOf("kotlinDSLClassPathFinder.gradle")
+        val tasks = listOf("kotlinLSPKotlinDSLDeps")
+
+        return readDependenciesViaGradleCLI(projectDirectory, scripts, tasks)
+            .apply { if (isNotEmpty()) LOG.info("Successfully resolved build script dependencies for '${projectDirectory.fileName}' using Gradle") }
     }
 
     override val currentBuildFileVersion: Long get() = path.toFile().lastModified()
 
     companion object {
         /** Create a Gradle resolver if a file is a pom. */
-        fun maybeCreate(file: Path): GradleClassPathResolver? =
-            file.takeIf { file.endsWith("build.gradle") || file.endsWith("build.gradle.kts") }
-                ?.let { GradleClassPathResolver(it, includeKotlinDSL = file.toString().endsWith(".kts")) }
+        fun maybeCreate(file: Path): GradleClassPathResolver? {
+            if(!file.endsWith("build.gradle") && !file.endsWith("build.gradle.kts")) return null
+            return GradleClassPathResolver(file, includeKotlinDSL = file.toString().endsWith(".kts"))
+        }
     }
 }
 
@@ -61,8 +61,7 @@ private fun gradleScriptToTempFile(scriptName: String): File {
 }
 
 private fun getGradleCommand(workspace: Path): Path {
-    val wrapperName = "gradlew"
-    val wrapper = workspace.resolve(wrapperName).toAbsolutePath()
+    val wrapper = workspace.resolve("gradlew").toAbsolutePath()
     if (Files.isExecutable(wrapper)) {
         return wrapper
     }
@@ -126,4 +125,3 @@ private fun execAndReadStdoutAndStderr(shellCommand: List<String>, directory: Pa
     errorsThread.join()
     return Pair(output, errors)
 }
-

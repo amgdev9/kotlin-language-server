@@ -11,7 +11,12 @@ import java.util.function.BiPredicate
 /** Backup classpath that find Kotlin in the user's Maven/Gradle home or kotlinc's libraries folder. */
 object BackupClassPathResolver : ClassPathResolver {
     override val resolverType: String = "Backup"
-    override val classpath: Set<ClassPathEntry> get() = findKotlinStdlib()?.let { setOf(it) }.orEmpty().map { ClassPathEntry(it, null) }.toSet()
+    override val classpath: Set<ClassPathEntry> get() {
+        val kotlinStdlib = findKotlinStdlib()
+        if(kotlinStdlib == null) return emptySet()
+
+        return setOf(ClassPathEntry(kotlinStdlib, null))
+    }
 }
 
 fun findKotlinStdlib(): Path? =
@@ -126,4 +131,3 @@ private inline fun <T> tryResolving(what: String, resolver: () -> T?): T? {
         return null
     }
 }
-
