@@ -1,13 +1,12 @@
 package org.javacs.kt.classpath
 
-import java.io.File
+import org.javacs.kt.LOG
+import org.javacs.kt.util.findCommandOnPath
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.function.BiPredicate
-import org.javacs.kt.util.findCommandOnPath
-import org.javacs.kt.LOG
-import java.nio.file.Paths
 
 /** Backup classpath that find Kotlin in the user's Maven/Gradle home or kotlinc's libraries folder. */
 object BackupClassPathResolver : ClassPathResolver {

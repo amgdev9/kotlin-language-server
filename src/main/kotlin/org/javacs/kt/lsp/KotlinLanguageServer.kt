@@ -62,7 +62,7 @@ class KotlinLanguageServer(
         }
 
     companion object {
-        val VERSION = "1.0.0" 
+        const val VERSION = "1.0.0"
     }
 
     init {
@@ -129,7 +129,7 @@ class KotlinLanguageServer(
         val progress = params.workDoneToken?.let { LanguageClientProgress("Workspace folders", it, client) }
 
         val folders = params.workspaceFolders
-        folders.forEachIndexed { i, folder ->
+        folders?.forEachIndexed { i, folder ->
             LOG.info("Adding workspace folder {}", folder.name)
 
             val progressPrefix = "[${i + 1}/${folders.size}] ${folder.name ?: ""}"
@@ -137,17 +137,26 @@ class KotlinLanguageServer(
             progress?.update("$progressPrefix: Updating source path", progressPercent)
 
             val root = Paths.get(parseURI(folder.uri))
+
+            // TODO Use gradle to find source files
             sourceFiles.addWorkspaceRoot(root)
 
             progress?.update("$progressPrefix: Updating class path", progressPercent)
-            val refreshed = classPath.addWorkspaceRoot(root)
-            if (refreshed) {
+
+            // This calls gradle and reinstantiates the compiler if classpath has changed
+            val refreshedCompiler = classPath.addWorkspaceRoot(root)
+            if (refreshedCompiler) {
                 progress?.update("$progressPrefix: Refreshing source path", progressPercent)
+
+                // Recompiles all source files, updating the index
+                // TODO Is this needed?
                 sourcePath.refresh()
             }
         }
         progress?.close()
 
+        // This compiles all the files twice and updates the index twice
+        // TODO Optimize this mess
         textDocuments.lintAll()
 
         val serverInfo = ServerInfo("Kotlin Language Server", VERSION)
@@ -155,6 +164,7 @@ class KotlinLanguageServer(
     }
 
     private fun connectLoggingBackend() {
+        // Temp logs for debugging
         val logFile = File("/home/amg/Projects/kotlin-language-server/log.txt")
         if(logFile.exists()) logFile.delete()
         logFile.createNewFile()

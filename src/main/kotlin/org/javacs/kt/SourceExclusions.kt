@@ -35,7 +35,7 @@ class SourceExclusions(
     }
 
     /** Tests whether the given URI is not excluded. */
-    fun isURIIncluded(uri: URI) = uri.filePath?.let(this::isPathIncluded) ?: false
+    fun isURIIncluded(uri: URI) = uri.filePath?.let(this::isPathIncluded) == true
 
     /** Tests whether the given path is not excluded. */
     private fun isPathIncluded(file: Path): Boolean = workspaceRoots.any { file.startsWith(it) }

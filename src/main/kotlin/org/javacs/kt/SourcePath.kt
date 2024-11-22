@@ -53,7 +53,7 @@ class SourcePath(
         val extension: String? = uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
         val isScript: Boolean = extension == "kts"
         val kind: CompilationKind =
-            if (path?.fileName?.toString()?.endsWith(".gradle.kts") ?: false) CompilationKind.BUILD_SCRIPT
+            if (path?.fileName?.toString()?.endsWith(".gradle.kts") == true) CompilationKind.BUILD_SCRIPT
             else CompilationKind.DEFAULT
 
         fun put(newContent: String) {
@@ -197,46 +197,6 @@ class SourcePath(
         val (changedBuildScripts, changedSources) = allChanged.partition { it.kind == CompilationKind.BUILD_SCRIPT }
 
         // Compile changed files
-        fun compileAndUpdate(changed: List<SourceFile>, kind: CompilationKind): BindingContext? {
-            if (changed.isEmpty()) return null
-
-            // Get clones of the old files, so we can remove the old declarations from the index
-            val oldFiles = changed.mapNotNull {
-                if (it.compiledFile?.text != it.content || it.parsed?.text != it.content) {
-                    it.clone()
-                } else {
-                    null
-                }
-            }
-
-            // Parse the files that have changed
-            val parse = changed.associateWith { it.apply { parseIfChanged() }.parsed!! }
-
-            // Get all the files. This will parse them if they changed
-            val allFiles = all()
-            beforeCompileCallback.invoke()
-            val (context, module) = classPath.compiler.compileKtFiles(parse.values, allFiles, kind)
-
-            // Update cache
-            for ((f, parsed) in parse) {
-                parseDataWriteLock.withLock {
-                    if (f.parsed == parsed) {
-                        //only updated if the parsed file didn't change:
-                        f.compiledFile = parsed
-                        f.compiledContext = context
-                        f.module = module
-                    }
-                }
-            }
-
-            // Only index normal files, not build files
-            if (kind == CompilationKind.DEFAULT) {
-                refreshWorkspaceIndexes(oldFiles, parse.keys.toList())
-            }
-
-            return context
-        }
-
         val buildScriptsContext = compileAndUpdate(changedBuildScripts, CompilationKind.BUILD_SCRIPT)
         val sourcesContext = compileAndUpdate(changedSources, CompilationKind.DEFAULT)
 
@@ -245,6 +205,46 @@ class SourcePath(
         val combined = listOfNotNull(buildScriptsContext, sourcesContext) + same.map { it.compiledContext!! }
 
         return CompositeBindingContext.create(combined)
+    }
+
+    private fun compileAndUpdate(changed: List<SourceFile>, kind: CompilationKind): BindingContext? {
+        if (changed.isEmpty()) return null
+
+        // Get clones of the old files, so we can remove the old declarations from the index
+        val oldFiles = changed.mapNotNull {
+            if (it.compiledFile?.text != it.content || it.parsed?.text != it.content) {
+                it.clone()
+            } else {
+                null
+            }
+        }
+
+        // Parse the files that have changed
+        val parse = changed.associateWith { it.apply { parseIfChanged() }.parsed!! }
+
+        // Get all the files. This will parse them if they changed
+        val allFiles = all()
+        beforeCompileCallback.invoke()
+        val (context, module) = classPath.compiler.compileKtFiles(parse.values, allFiles, kind)
+
+        // Update cache
+        for ((f, parsed) in parse) {
+            parseDataWriteLock.withLock {
+                if (f.parsed == parsed) {
+                    //only updated if the parsed file didn't change:
+                    f.compiledFile = parsed
+                    f.compiledContext = context
+                    f.module = module
+                }
+            }
+        }
+
+        // Only index normal files, not build files
+        if (kind == CompilationKind.DEFAULT) {
+            refreshWorkspaceIndexes(oldFiles, parse.keys.toList())
+        }
+
+        return context
     }
 
     fun compileAllFiles() {
@@ -264,21 +264,21 @@ class SourcePath(
      * Saves a file. This generates code for the file and deletes previously generated code for this file.
      */
     fun save(uri: URI) {
-        files[uri]?.let {
-            if (!it.isScript) {
-                // If the code generation fails for some reason, we generate code for the other files anyway
-                try {
-                    classPath.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
-                    it.module?.let { module ->
-                        it.compiledContext?.let { context ->
-                            classPath.compiler.generateCode(module, context, listOfNotNull(it.compiledFile))
-                            it.lastSavedFile = it.compiledFile
-                        }
-                    }
-                } catch (ex: Exception) {
-                    LOG.printStackTrace(ex)
-                }
-            }
+        val file = files[uri]
+        if (file == null) return
+        if (file.isScript) return
+
+        // If the code generation fails for some reason, we generate code for the other files anyway
+        try {
+            classPath.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
+            val module = file.module
+            val context = file.compiledContext
+            if (module == null || context == null) return
+
+            classPath.compiler.generateCode(module, context, listOfNotNull(file.compiledFile))
+            file.lastSavedFile = file.compiledFile
+        } catch (ex: Exception) {
+            LOG.printStackTrace(ex)
         }
     }
 
@@ -290,9 +290,9 @@ class SourcePath(
         compileAllFiles()
 
         val module = files.values.first { it.module != null }.module
-        if (module != null) {
-            refreshDependencyIndexes(module)
-        }
+        if (module == null) return
+
+        refreshDependencyIndexes(module)
     }
 
     /**

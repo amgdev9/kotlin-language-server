@@ -36,4 +36,3 @@ class ExitingInputStream(private val delegate: InputStream): InputStream() {
         return result
     }
 }
-

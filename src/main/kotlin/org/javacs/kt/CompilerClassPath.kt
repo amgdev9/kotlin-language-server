@@ -84,7 +84,7 @@ class CompilerClassPath(
             compiler.close()
             compiler = Compiler(
                 javaSourcePath,
-                classPath.map { it.compiledJar }.toSet(),
+                classPath.asSequence().map { it.compiledJar }.toSet(),
                 buildScriptClassPath,
                 scriptsConfig,
                 codegenConfig,
@@ -130,6 +130,14 @@ class CompilerClassPath(
         return refresh()
     }
 
+    private fun findJavaSourceFiles(root: Path): Set<Path> {
+        val sourceMatcher = FileSystems.getDefault().getPathMatcher("glob:*.java")
+        return SourceExclusions(listOf(root), scriptsConfig)
+            .walkIncluded()
+            .filter { sourceMatcher.matches(it.fileName) }
+            .toSet()
+    }
+
     fun createdOnDisk(file: Path): Boolean {
         if (isJavaSource(file)) {
             javaSourcePath.add(file)
@@ -159,15 +167,7 @@ class CompilerClassPath(
 
     private fun isJavaSource(file: Path): Boolean = file.fileName.toString().endsWith(".java")
 
-    private fun isBuildScript(file: Path): Boolean = file.fileName.toString().let { it == "pom.xml" || it == "build.gradle" || it == "build.gradle.kts" }
-
-    private fun findJavaSourceFiles(root: Path): Set<Path> {
-        val sourceMatcher = FileSystems.getDefault().getPathMatcher("glob:*.java")
-        return SourceExclusions(listOf(root), scriptsConfig)
-            .walkIncluded()
-            .filter { sourceMatcher.matches(it.fileName) }
-            .toSet()
-    }
+    private fun isBuildScript(file: Path): Boolean = file.fileName.toString().let { it == "build.gradle" || it == "build.gradle.kts" }
 
     override fun close() {
         compiler.close()
