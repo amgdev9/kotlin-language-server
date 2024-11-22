@@ -2,6 +2,8 @@ package org.javacs.kt
 
 import org.javacs.kt.classpath.ClassPathEntry
 import org.javacs.kt.classpath.defaultClassPathResolver
+import org.javacs.kt.classpath.getBuildScriptClasspathOrEmpty
+import org.javacs.kt.classpath.getClasspathOrEmpty
 import org.javacs.kt.util.AsyncExecutor
 import java.io.Closeable
 import java.io.File
@@ -54,7 +56,7 @@ class CompilerClassPath(
         var refreshCompiler = updateJavaSourcePath
 
         if (updateClassPath) {
-            val newClassPath = resolver.classpathOrEmpty
+            val newClassPath = getClasspathOrEmpty(resolver)
             if (newClassPath != classPath) {
                 synchronized(classPath) {
                     syncPaths(classPath, newClassPath, "class path") { it.compiledJar }
@@ -72,7 +74,7 @@ class CompilerClassPath(
 
         if (updateBuildScriptClassPath) {
             LOG.info("Update build script path")
-            val newBuildScriptClassPath = resolver.buildScriptClasspathOrEmpty
+            val newBuildScriptClassPath = getBuildScriptClasspathOrEmpty(resolver)
             if (newBuildScriptClassPath != buildScriptClassPath) {
                 syncPaths(buildScriptClassPath, newBuildScriptClassPath, "build script class path") { it }
                 refreshCompiler = true

@@ -11,9 +11,7 @@ import java.util.function.BiPredicate
 /** A classpath resolver that ensures another resolver contains the stdlib */
 internal class WithStdlibResolver(private val wrapped: ClassPathResolver) : ClassPathResolver {
     override val classpath: Set<ClassPathEntry> get() = wrapWithStdlibEntries(wrapped.classpath)
-    override val classpathOrEmpty: Set<ClassPathEntry> get() = wrapWithStdlibEntries(wrapped.classpathOrEmpty)
     override val buildScriptClasspath: Set<Path> get() = wrapWithStdlib(wrapped.buildScriptClasspath)
-    override val buildScriptClasspathOrEmpty: Set<Path> get() = wrapWithStdlib(wrapped.buildScriptClasspathOrEmpty)
     override val classpathWithSources: Set<ClassPathEntry> get() = wrapWithStdlibEntries(wrapped.classpathWithSources)
     override val currentBuildFileVersion: Long get() = wrapped.currentBuildFileVersion
 }
@@ -80,7 +78,7 @@ private data class StdLibItem(
     }
 }
 
-fun findKotlinStdlib(): Path? =
+private fun findKotlinStdlib(): Path? =
     findKotlinCliCompilerLibrary("kotlin-stdlib")
         ?: findLocalArtifact("org.jetbrains.kotlin", "kotlin-stdlib")
         ?: findAlternativeLibraryLocation("kotlin-stdlib")

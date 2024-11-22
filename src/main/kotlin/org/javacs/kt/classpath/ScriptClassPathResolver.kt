@@ -1,19 +1,16 @@
 package org.javacs.kt.classpath
 
-import java.io.File
+import org.javacs.kt.LOG
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import org.javacs.kt.util.userHome
-import org.javacs.kt.LOG
 
 /** Executes a script to determine the classpath */
 internal class ScriptClassPathResolver(
-    private val script: Path,
-    private val workingDir: Path? = null
+    private val script: Path
 ) : ClassPathResolver {
     override val classpath: Set<ClassPathEntry> get() {
-        val workingDirectory = workingDir?.toFile() ?: script.toAbsolutePath().parent.toFile()
+        val workingDirectory = script.toAbsolutePath().parent.toFile()
         val cmd = script.toString()
         LOG.info("Run {} in {}", cmd, workingDirectory)
         val process = ProcessBuilder(cmd).directory(workingDirectory).start()
@@ -36,18 +33,6 @@ internal class ScriptClassPathResolver(
             }
 
             return ScriptClassPathResolver(file)
-        }
-
-        /** The root directory for config files. */
-        private val globalConfigRoot: Path =
-            System.getenv("XDG_CONFIG_HOME")?.let { Paths.get(it) } ?: userHome.resolve(".config")
-
-        /** Returns the ShellClassPathResolver for the global home directory shell script. */
-        fun global(workingDir: Path?): ClassPathResolver {
-            val path = globalConfigRoot.resolve("kotlin-language-server").resolve("classpath")
-            if(!Files.exists(path)) return ClassPathResolver.empty
-
-            return ScriptClassPathResolver(path, workingDir)
         }
     }
 }

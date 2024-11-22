@@ -8,8 +8,7 @@ import java.nio.file.FileSystems
 
 fun defaultClassPathResolver(workspaceRoots: Collection<Path>, db: Database?): ClassPathResolver {
     val childResolver = WithStdlibResolver(
-        ScriptClassPathResolver.global(workspaceRoots.firstOrNull())
-            .or(workspaceRoots.asSequence().flatMap { workspaceResolvers(it) }.joined)
+        workspaceRoots.asSequence().flatMap { workspaceResolvers(it) }.joined
     )
 
     if (db != null) return CachedClassPathResolver(childResolver, db)

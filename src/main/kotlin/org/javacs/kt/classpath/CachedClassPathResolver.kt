@@ -53,50 +53,6 @@ internal class CachedClassPathResolver(
     private val wrapped: ClassPathResolver,
     private val db: Database
 ) : ClassPathResolver {
-    private var cachedClassPathEntries: Set<ClassPathEntry>
-        get() = transaction(db) {
-            ClassPathCacheEntryEntity.all().map {
-                ClassPathEntry(
-                    compiledJar = Paths.get(it.compiledJar),
-                    sourceJar = it.sourceJar?.let(Paths::get)
-                )
-            }.toSet()
-        }
-        set(newEntries) = transaction(db) {
-            ClassPathCacheEntry.deleteAll()
-            newEntries.map {
-                ClassPathCacheEntryEntity.new {
-                    compiledJar = it.compiledJar.toString()
-                    sourceJar = it.sourceJar?.toString()
-                }
-            }
-        }
-
-    private var cachedBuildScriptClassPathEntries: Set<Path>
-        get() = transaction(db) { BuildScriptClassPathCacheEntryEntity.all().map { Paths.get(it.jar) }.toSet() }
-        set(newEntries) = transaction(db) {
-            BuildScriptClassPathCacheEntry.deleteAll()
-            newEntries.map { BuildScriptClassPathCacheEntryEntity.new { jar = it.toString() } }
-        }
-
-    private var cachedClassPathMetadata
-        get() = transaction(db) {
-            ClassPathMetadataCacheEntity.all().map {
-                ClasspathMetadata(
-                    includesSources = it.includesSources,
-                    buildFileVersion = it.buildFileVersion
-                )
-            }.firstOrNull()
-        }
-        set(newClassPathMetadata) = transaction(db) {
-            ClassPathMetadataCache.deleteAll()
-            val newClassPathMetadataRow = newClassPathMetadata ?: ClasspathMetadata()
-            ClassPathMetadataCacheEntity.new {
-                includesSources = newClassPathMetadataRow.includesSources
-                buildFileVersion = newClassPathMetadataRow.buildFileVersion
-            }
-        }
-
     init {
         transaction(db) {
             SchemaUtils.createMissingTablesAndColumns(
@@ -144,6 +100,50 @@ internal class CachedClassPathResolver(
     }
 
     override val currentBuildFileVersion: Long get() = wrapped.currentBuildFileVersion
+
+    private var cachedClassPathEntries: Set<ClassPathEntry>
+        get() = transaction(db) {
+            ClassPathCacheEntryEntity.all().map {
+                ClassPathEntry(
+                    compiledJar = Paths.get(it.compiledJar),
+                    sourceJar = it.sourceJar?.let(Paths::get)
+                )
+            }.toSet()
+        }
+        set(newEntries) = transaction(db) {
+            ClassPathCacheEntry.deleteAll()
+            newEntries.map {
+                ClassPathCacheEntryEntity.new {
+                    compiledJar = it.compiledJar.toString()
+                    sourceJar = it.sourceJar?.toString()
+                }
+            }
+        }
+
+    private var cachedBuildScriptClassPathEntries: Set<Path>
+        get() = transaction(db) { BuildScriptClassPathCacheEntryEntity.all().map { Paths.get(it.jar) }.toSet() }
+        set(newEntries) = transaction(db) {
+            BuildScriptClassPathCacheEntry.deleteAll()
+            newEntries.map { BuildScriptClassPathCacheEntryEntity.new { jar = it.toString() } }
+        }
+
+    private var cachedClassPathMetadata
+        get() = transaction(db) {
+            ClassPathMetadataCacheEntity.all().map {
+                ClasspathMetadata(
+                    includesSources = it.includesSources,
+                    buildFileVersion = it.buildFileVersion
+                )
+            }.firstOrNull()
+        }
+        set(newClassPathMetadata) = transaction(db) {
+            ClassPathMetadataCache.deleteAll()
+            val newClassPathMetadataRow = newClassPathMetadata ?: ClasspathMetadata()
+            ClassPathMetadataCacheEntity.new {
+                includesSources = newClassPathMetadataRow.includesSources
+                buildFileVersion = newClassPathMetadataRow.buildFileVersion
+            }
+        }
 
     private fun updateClasspathCache(newClasspathEntries: Set<ClassPathEntry>, includesSources: Boolean) {
         transaction(db) {
