@@ -66,6 +66,7 @@ import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.cli.jvm.compiler.TopDownAnalyzerFacadeForJVM
 import org.jetbrains.kotlin.cli.jvm.config.configureJdkClasspathRoots
+import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.resolve.scopes.LexicalScope
@@ -112,7 +113,7 @@ private class CompilationEnvironment(
 
             // Kotlin 1.8.20 requires us to specify the JDK home, otherwise java.* classes won't resolve
             // See https://github.com/JetBrains/kotlin-compiler-server/pull/626
-            val jdkHome = File(System.getProperty("java.home"))
+            val jdkHome = File(System.getProperty("java.home")) // TODO Get it from gradle sourceCompatibility
             put(JVMConfigurationKeys.JDK_HOME, jdkHome)
 
             addJvmClasspathRoots(classPath.map { it.toFile() })

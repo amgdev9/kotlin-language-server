@@ -27,6 +27,7 @@ import java.io.File
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletableFuture.completedFuture
+import kotlin.system.exitProcess
 
 class KotlinLanguageServer(
     val config: Configuration = Configuration()
@@ -185,6 +186,9 @@ class KotlinLanguageServer(
         classPath.close()
         tempDirectory.close()
         async.shutdown(awaitTermination = true)
+
+        LOG.info("Closing language server...")
+        exitProcess(0)
     }
 
     override fun shutdown(): CompletableFuture<Any> {

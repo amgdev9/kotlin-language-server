@@ -12,27 +12,8 @@ fun main(argv: Array<String>) {
 
     val server = KotlinLanguageServer()
     val threads = Executors.newSingleThreadExecutor { Thread(it, "client") }
-    val launcher = LSPLauncher.createServerLauncher(server, ExitingInputStream(System.`in`), System.out, threads) { it }
+    val launcher = LSPLauncher.createServerLauncher(server, System.`in`, System.out, threads) { it }
 
     server.connect(launcher.remoteProxy)
     launcher.startListening()
-}
-
-class ExitingInputStream(private val delegate: InputStream): InputStream() {
-    override fun read(): Int = exitIfNegative { delegate.read() }
-
-    override fun read(b: ByteArray): Int = exitIfNegative { delegate.read(b) }
-
-    override fun read(b: ByteArray, off: Int, len: Int): Int = exitIfNegative { delegate.read(b, off, len) }
-
-    private fun exitIfNegative(call: () -> Int): Int {
-        val result = call()
-
-        if (result < 0) {
-            LOG.info("System.in has closed, exiting")
-            exitProcess(0)
-        }
-
-        return result
-    }
 }
