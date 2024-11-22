@@ -17,7 +17,6 @@ import java.nio.file.Path
  */
 class CompilerClassPath(
     private val config: Configuration.Compiler,
-    private val scriptsConfig: Configuration.Scripts,
     private val codegenConfig: Configuration.Codegen,
     private val databaseService: DatabaseService
 ) : Closeable {
@@ -32,8 +31,6 @@ class CompilerClassPath(
     var compiler = Compiler(
         javaSourcePath,
         classPath.map { it.compiledJar }.toSet(),
-        buildScriptClassPath,
-        scriptsConfig,
         codegenConfig,
         outputDirectory
     )
@@ -92,8 +89,6 @@ class CompilerClassPath(
             compiler = Compiler(
                 javaSourcePath,
                 classPath.asSequence().map { it.compiledJar }.toSet(),
-                buildScriptClassPath,
-                scriptsConfig,
                 codegenConfig,
                 outputDirectory
             )
@@ -143,7 +138,7 @@ class CompilerClassPath(
 
     private fun findJavaSourceFiles(root: Path): Set<Path> {
         val sourceMatcher = FileSystems.getDefault().getPathMatcher("glob:*.java")
-        return SourceExclusions(listOf(root), scriptsConfig)
+        return SourceExclusions(listOf(root))
             .walkIncluded()
             .filter { sourceMatcher.matches(it.fileName) }
             .toSet()

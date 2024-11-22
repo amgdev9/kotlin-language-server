@@ -44,7 +44,6 @@ data class Configuration(
     val compiler: Compiler = Compiler(),
     val completion: Completion = Completion(),
     val diagnostics: Diagnostics = Diagnostics(),
-    val scripts: Scripts = Scripts(),
     val indexing: Indexing = Indexing(),
     val externalSources: ExternalSources = ExternalSources(),
     val inlayHints: InlayHints = InlayHints(),
@@ -76,12 +75,6 @@ data class Configuration(
         var level: DiagnosticSeverity = DiagnosticSeverity.Hint,
         /** The time interval between subsequent lints in ms. */
         var debounceTime: Long = 250L
-    )
-    data class Scripts(
-        /** Whether .kts scripts are handled. */
-        var enabled: Boolean = false,
-        /** Whether .gradle.kts scripts are handled. Only considered if scripts are enabled in general. */
-        var buildScriptsEnabled: Boolean = false
     )
     data class Indexing(
         /** Whether an index of global symbols should be built in the background. */

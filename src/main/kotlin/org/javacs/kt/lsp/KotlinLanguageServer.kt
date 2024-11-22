@@ -33,7 +33,7 @@ class KotlinLanguageServer(
     val config: Configuration = Configuration()
 ) : LanguageServer, LanguageClientAware, Closeable {
     val databaseService = DatabaseService()
-    val classPath = CompilerClassPath(config.compiler, config.scripts, config.codegen, databaseService)
+    val classPath = CompilerClassPath(config.compiler, config.codegen, databaseService)
 
     private val tempDirectory = TemporaryFolder()
     private val uriContentProvider = URIContentProvider(
@@ -46,7 +46,7 @@ class KotlinLanguageServer(
         )
     )
     val sourcePath = SourcePath(classPath, uriContentProvider, config.indexing, databaseService)
-    val sourceFiles = SourceFiles(sourcePath, uriContentProvider, config.scripts)
+    val sourceFiles = SourceFiles(sourcePath, uriContentProvider)
 
     private val textDocuments =
         KotlinTextDocumentService(sourceFiles, sourcePath, config, tempDirectory, uriContentProvider, classPath)

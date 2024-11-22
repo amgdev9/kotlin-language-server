@@ -60,11 +60,10 @@ private class NotifySourcePath(private val sourcePath: SourcePath) {
  */
 class SourceFiles(
     sourcePath: SourcePath,
-    private val contentProvider: URIContentProvider,
-    private val scriptsConfig: Configuration.Scripts
+    private val contentProvider: URIContentProvider
 ) {
     private val workspaceRoots = mutableSetOf<Path>()
-    private var exclusions = SourceExclusions(workspaceRoots, scriptsConfig)
+    private var exclusions = SourceExclusions(workspaceRoots)
     private val files = NotifySourcePath(sourcePath)
     private val open = mutableSetOf<URI>()
 
@@ -169,7 +168,7 @@ class SourceFiles(
 
     private fun findSourceFiles(root: Path): Set<URI> {
         val sourceMatcher = FileSystems.getDefault().getPathMatcher("glob:*.{kt,kts}")
-        return SourceExclusions(listOf(root), scriptsConfig)
+        return SourceExclusions(listOf(root))
             .walkIncluded()
             .filter { sourceMatcher.matches(it.fileName) }
             .map(Path::toUri)
@@ -187,7 +186,7 @@ class SourceFiles(
     }
 
     fun updateExclusions() {
-        exclusions = SourceExclusions(workspaceRoots, scriptsConfig)
+        exclusions = SourceExclusions(workspaceRoots)
         LOG.info("Updated exclusions: ${exclusions.excludedPatterns}")
     }
 
