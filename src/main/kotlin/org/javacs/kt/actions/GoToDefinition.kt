@@ -86,7 +86,7 @@ fun goToDefinition(
     return destination
 }
 
-private fun isInsideArchive(uri: String, cp: CompilerClassPath) =
-    uri.contains(".jar!") || uri.contains(".zip!") || cp.javaHome?.let {
+private fun isInsideArchive(uri: String, classPath: CompilerClassPath) =
+    uri.contains(".jar!") || uri.contains(".zip!") || classPath.javaHome?.let {
         Paths.get(parseURI(uri)).toString().startsWith(File(it).path)
     } == true

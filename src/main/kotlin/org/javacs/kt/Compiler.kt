@@ -595,4 +595,3 @@ private object LoggingMessageCollector: MessageCollector {
 
 	override fun hasErrors() = false
 }
-

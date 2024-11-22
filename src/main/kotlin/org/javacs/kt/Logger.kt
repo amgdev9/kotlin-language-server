@@ -1,6 +1,7 @@
 package org.javacs.kt
 
-import org.javacs.kt.util.DelegatePrintStream
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.time.Instant
 import java.util.*
 import java.util.logging.Handler
@@ -50,7 +51,7 @@ class Logger {
     val outStream = DelegatePrintStream { log(LogMessage(LogLevel.INFO, it.trimEnd())) }
 
     val logTime = false
-    var level = LogLevel.INFO
+    var level = LogLevel.INFO   // Change for debugging purposes
 
     fun logError(msg: LogMessage) {
         if (errBackend == null) {
@@ -71,12 +72,6 @@ class Logger {
     private fun logWithPlaceholdersAt(msgLevel: LogLevel, msg: String, placeholders: Array<out Any?>) {
         if (level.value <= msgLevel.value) {
             log(LogMessage(msgLevel, format(insertPlaceholders(msg, placeholders))))
-        }
-    }
-
-    inline fun logWithLambdaAt(msgLevel: LogLevel, msg: () -> String) {
-        if (level.value <= msgLevel.value) {
-            log(LogMessage(msgLevel, msg()))
         }
     }
 
@@ -160,4 +155,69 @@ class Logger {
         } else {
             ".." + str.substring(str.length - length + 2)
         }
+}
+
+class DelegatePrintStream(private val delegate: (String) -> Unit): PrintStream(ByteArrayOutputStream(0)) {
+    private val newLine = System.lineSeparator()
+
+    override fun write(c: Int) = delegate((c.toChar()).toString())
+
+    override fun write(buf: ByteArray, off: Int, len: Int) {
+        if (len > 0 && buf.isNotEmpty()) {
+            delegate(String(buf, off, len))
+        }
+    }
+
+    override fun append(csq: CharSequence): PrintStream {
+        delegate(csq.toString())
+        return this
+    }
+
+    override fun append(csq: CharSequence, start: Int, end: Int): PrintStream {
+        delegate(csq.subSequence(start, end).toString())
+        return this
+    }
+
+    override fun append(c:Char): PrintStream {
+        delegate((c).toString())
+        return this
+    }
+
+    override fun print(x: Boolean) = delegate(x.toString())
+
+    override fun print(x: Char) = delegate(x.toString())
+
+    override fun print(x: Int) = delegate(x.toString())
+
+    override fun print(x: Long) = delegate(x.toString())
+
+    override fun print(x: Float) = delegate(x.toString())
+
+    override fun print(x: Double) = delegate(x.toString())
+
+    override fun print(s: CharArray) = delegate(String(s))
+
+    override fun print(s: String) = delegate(s)
+
+    override fun print(obj: Any) = delegate(obj.toString())
+
+    override fun println() = delegate(newLine)
+
+    override fun println(x: Boolean) = delegate(x.toString() + newLine)
+
+    override fun println(x: Char) = delegate(x.toString() + newLine)
+
+    override fun println(x: Int) = delegate(x.toString() + newLine)
+
+    override fun println(x: Long) = delegate(x.toString() + newLine)
+
+    override fun println(x: Float) = delegate(x.toString() + newLine)
+
+    override fun println(x: Double) = delegate(x.toString() + newLine)
+
+    override fun println(x: CharArray) = delegate(String(x) + newLine)
+
+    override fun println(x: String) = delegate(x + newLine)
+
+    override fun println(x: Any) = delegate(x.toString() + newLine)
 }

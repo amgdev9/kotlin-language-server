@@ -117,13 +117,15 @@ class SourceFiles(
     fun deletedOnDisk(uri: URI) {
         if (!isSource(uri)) return
         files.remove(uri)
-
     }
 
     fun changedOnDisk(uri: URI) {
         if (!isSource(uri)) return
-        files[uri] = readFromDisk(uri, files[uri]?.isTemporary == true)
-            ?: throw RuntimeException("Could not read source file '$uri' after being changed on disk")
+
+        val sourceVersion = readFromDisk(uri, files[uri]?.isTemporary == true)
+        if (sourceVersion == null) throw RuntimeException("Could not read source file '$uri' after being changed on disk")
+
+        files[uri] = sourceVersion
     }
 
     private fun readFromDisk(uri: URI, temporary: Boolean): SourceVersion? = try {
@@ -152,9 +154,13 @@ class SourceFiles(
 
         // Load all kotlin files into RAM 
         for (uri in addSources) {
-            readFromDisk(uri, temporary = false)?.let {
-                files[uri] = it
-            } ?: LOG.warn("Could not read source file '{}'", uri.path)
+            val sourceVersion = readFromDisk(uri, temporary = false)
+            if (sourceVersion == null) {
+                LOG.warn("Could not read source file '{}'", uri.path)
+                continue
+            }
+
+            files[uri] = sourceVersion
         }
 
         workspaceRoots.add(root)
@@ -229,4 +235,3 @@ private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): S
         else writer.write(next)
     }
 }
-
