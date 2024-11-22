@@ -10,9 +10,9 @@ fun defaultClassPathResolver(workspaceRoots: Collection<Path>, db: Database?): C
     val childResolver = WithStdlibResolver(
         ScriptClassPathResolver.global(workspaceRoots.firstOrNull())
             .or(workspaceRoots.asSequence().flatMap { workspaceResolvers(it) }.joined)
-    ).or(BackupClassPathResolver)
+    )
 
-    if(db != null) return CachedClassPathResolver(childResolver, db)
+    if (db != null) return CachedClassPathResolver(childResolver, db)
     return childResolver
 }
 

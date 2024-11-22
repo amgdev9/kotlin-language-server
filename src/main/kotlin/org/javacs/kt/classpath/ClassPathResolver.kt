@@ -6,14 +6,12 @@ import kotlin.math.max
 
 /** A source for creating class paths */
 interface ClassPathResolver {
-    val resolverType: String
-
     val classpath: Set<ClassPathEntry> // may throw exceptions
     val classpathOrEmpty: Set<ClassPathEntry> // does not throw exceptions
         get() = try {
             classpath
         } catch (e: Exception) {
-            LOG.warn("Could not resolve classpath using {}: {}", resolverType, e.message)
+            LOG.warn("Could not resolve classpath: {}", e.message)
             emptySet<ClassPathEntry>()
         }
 
@@ -23,7 +21,7 @@ interface ClassPathResolver {
         get() = try {
             buildScriptClasspath
         } catch (e: Exception) {
-            LOG.warn("Could not resolve buildscript classpath using {}: {}", resolverType, e.message)
+            LOG.warn("Could not resolve buildscript classpath: {}", e.message)
             emptySet<Path>()
         }
 
@@ -42,7 +40,6 @@ interface ClassPathResolver {
     companion object {
         /** A default empty classpath implementation */
         val empty = object : ClassPathResolver {
-            override val resolverType = "[]"
             override val classpath = emptySet<ClassPathEntry>()
         }
     }
@@ -58,7 +55,6 @@ infix fun ClassPathResolver.or(other: ClassPathResolver): ClassPathResolver = Fi
 
 /** The union of two class path resolvers. */
 internal class UnionClassPathResolver(val lhs: ClassPathResolver, val rhs: ClassPathResolver) : ClassPathResolver {
-    override val resolverType: String get() = "(${lhs.resolverType} + ${rhs.resolverType})"
     override val classpath get() = lhs.classpath + rhs.classpath
     override val classpathOrEmpty get() = lhs.classpathOrEmpty + rhs.classpathOrEmpty
     override val buildScriptClasspath get() = lhs.buildScriptClasspath + rhs.buildScriptClasspath
@@ -68,7 +64,6 @@ internal class UnionClassPathResolver(val lhs: ClassPathResolver, val rhs: Class
 }
 
 internal class FirstNonEmptyClassPathResolver(val lhs: ClassPathResolver, val rhs: ClassPathResolver) : ClassPathResolver {
-    override val resolverType: String get() = "(${lhs.resolverType} or ${rhs.resolverType})"
     override val classpath get() = lhs.classpath.takeIf { it.isNotEmpty() } ?: rhs.classpath
     override val classpathOrEmpty get() = lhs.classpathOrEmpty.takeIf { it.isNotEmpty() } ?: rhs.classpathOrEmpty
     override val buildScriptClasspath get() = lhs.buildScriptClasspath.takeIf { it.isNotEmpty() } ?: rhs.buildScriptClasspath

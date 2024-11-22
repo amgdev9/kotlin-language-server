@@ -7,14 +7,12 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import org.javacs.kt.util.userHome
-import kotlin.toString
 
 private fun createPathOrNull(envVar: String): Path? = System.getenv(envVar)?.let(Paths::get)
 
 internal val gradleHome = createPathOrNull("GRADLE_USER_HOME") ?: userHome.resolve(".gradle")
 
 internal class GradleClassPathResolver(private val path: Path, private val includeKotlinDSL: Boolean): ClassPathResolver {
-    override val resolverType: String = "Gradle"
     private val projectDirectory: Path get() = path.parent
 
     override val classpath: Set<ClassPathEntry> get() {
@@ -31,14 +29,16 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
         val scripts = listOf("kotlinDSLClassPathFinder.gradle")
         val tasks = listOf("kotlinLSPKotlinDSLDeps")
 
-        return readDependenciesViaGradleCLI(projectDirectory, scripts, tasks)
-            .apply { if (isNotEmpty()) LOG.info("Successfully resolved build script dependencies for '${projectDirectory.fileName}' using Gradle") }
+        val classpath = readDependenciesViaGradleCLI(projectDirectory, scripts, tasks)
+        if (classpath.isNotEmpty()) {
+            LOG.info("Successfully resolved build script dependencies for '${projectDirectory.fileName}' using Gradle")
+        }
+        return classpath
     }
 
     override val currentBuildFileVersion: Long get() = path.toFile().lastModified()
 
     companion object {
-        /** Create a Gradle resolver if a file is a pom. */
         fun maybeCreate(file: Path): GradleClassPathResolver? {
             if(!file.endsWith("build.gradle") && !file.endsWith("build.gradle.kts")) return null
             return GradleClassPathResolver(file, includeKotlinDSL = file.toString().endsWith(".kts"))
@@ -47,17 +47,17 @@ internal class GradleClassPathResolver(private val path: Path, private val inclu
 }
 
 private fun gradleScriptToTempFile(scriptName: String): File {
-    val config = File.createTempFile("classpath", ".gradle")
+    val gradleConfigFile = File.createTempFile("classpath", ".gradle")
 
-    LOG.debug("Creating temporary gradle file {}", config.absolutePath)
+    LOG.debug("Creating temporary gradle file {}", gradleConfigFile.absolutePath)
 
-    config.bufferedWriter().use { configWriter ->
+    gradleConfigFile.bufferedWriter().use { configWriter ->
         GradleClassPathResolver::class.java.getResourceAsStream("/$scriptName").bufferedReader().use { configReader ->
             configReader.copyTo(configWriter)
         }
     }
 
-    return config
+    return gradleConfigFile
 }
 
 private fun getGradleCommand(workspace: Path): Path {

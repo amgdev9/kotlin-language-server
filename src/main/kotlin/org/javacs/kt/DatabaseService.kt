@@ -40,31 +40,34 @@ class DatabaseService {
             DatabaseMetadataEntity.all().firstOrNull()?.version ?: 0
         }
 
-        if (currentVersion != DB_VERSION) {
-            LOG.info("Database has version $currentVersion != $DB_VERSION (the required version), therefore it will be rebuilt...")
-
-            deleteDb(storagePath)
-            db = getDbFromFile(storagePath)
-
-            transaction(db) {
-                SchemaUtils.createMissingTablesAndColumns(DatabaseMetadata)
-
-                DatabaseMetadata.deleteAll()
-                DatabaseMetadata.insert { it[version] = DB_VERSION }
-            }
-        } else {
+        if (currentVersion == DB_VERSION) {
             LOG.info("Database has the correct version $currentVersion and will be used as-is")
+            return
+        }
+
+        LOG.info("Database has version $currentVersion != $DB_VERSION (the required version), therefore it will be rebuilt...")
+
+        deleteDb(storagePath)
+        db = getDbFromFile(storagePath)
+
+        transaction(db) {
+            SchemaUtils.createMissingTablesAndColumns(DatabaseMetadata)
+
+            DatabaseMetadata.deleteAll()
+            DatabaseMetadata.insert { it[version] = DB_VERSION }
         }
     }
 
     private fun getDbFromFile(storagePath: Path?): Database? {
         if (storagePath == null) return null
         if (!Files.isDirectory(storagePath)) return null
+
         return Database.connect("jdbc:sqlite:${getDbFilePath(storagePath)}")
     }
 
     private fun deleteDb(storagePath: Path?) {
         if(storagePath == null) return
+
         Files.deleteIfExists(getDbFilePath(storagePath))
     }
 

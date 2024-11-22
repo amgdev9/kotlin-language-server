@@ -53,8 +53,6 @@ internal class CachedClassPathResolver(
     private val wrapped: ClassPathResolver,
     private val db: Database
 ) : ClassPathResolver {
-    override val resolverType: String get() = "Cached + ${wrapped.resolverType}"
-
     private var cachedClassPathEntries: Set<ClassPathEntry>
         get() = transaction(db) {
             ClassPathCacheEntryEntity.all().map {
@@ -108,11 +106,9 @@ internal class CachedClassPathResolver(
     }
 
     override val classpath: Set<ClassPathEntry> get() {
-        cachedClassPathEntries.let {
-            if (!dependenciesChanged()) {
-                LOG.info("Classpath has not changed. Fetching from cache")
-                return it
-            }
+        if (!dependenciesChanged()) {
+            LOG.info("Classpath has not changed. Fetching from cache")
+            return cachedClassPathEntries
         }
 
         LOG.info("Cached classpath is outdated or not found. Resolving again")
@@ -138,7 +134,8 @@ internal class CachedClassPathResolver(
     }
 
     override val classpathWithSources: Set<ClassPathEntry> get() {
-        cachedClassPathMetadata?.let { if (!dependenciesChanged() && it.includesSources) return cachedClassPathEntries }
+        val classpath = cachedClassPathMetadata
+        if (classpath != null && !dependenciesChanged() && classpath.includesSources) return cachedClassPathEntries
 
         val newClasspath = wrapped.classpathWithSources
         updateClasspathCache(newClasspath, true)
