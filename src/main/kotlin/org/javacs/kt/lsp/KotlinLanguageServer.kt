@@ -14,9 +14,7 @@ import org.javacs.kt.LogMessage
 import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
 import org.javacs.kt.URIContentProvider
-import org.javacs.kt.DatabaseService
 import org.javacs.kt.externalsources.*
-import org.javacs.kt.getStoragePath
 import org.javacs.kt.LanguageClientProgress
 import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.util.AsyncExecutor
@@ -45,13 +43,15 @@ class KotlinLanguageServer(
             )
         )
     )
-    val sourcePath = SourcePath(classPath, uriContentProvider, config.indexing)
-    val sourceFiles = SourceFiles(sourcePath, uriContentProvider)
 
-    private val textDocuments =
+    private val sourcePath by lazy { SourcePath(classPath, uriContentProvider, config.indexing) }
+    private val sourceFiles by lazy { SourceFiles(sourcePath, uriContentProvider) }
+
+    private val textDocuments by lazy {
         KotlinTextDocumentService(sourceFiles, sourcePath, config, tempDirectory, uriContentProvider, classPath)
-    private val workspaces = KotlinWorkspaceService(sourceFiles, sourcePath, classPath, textDocuments, config)
-    private val protocolExtensions = KotlinProtocolExtensionService(uriContentProvider, classPath, sourcePath)
+    }
+    private val workspaces by lazy { KotlinWorkspaceService(sourceFiles, sourcePath, classPath, textDocuments, config) }
+    private val protocolExtensions by lazy { KotlinProtocolExtensionService(uriContentProvider, classPath, sourcePath) }
 
     private lateinit var client: LanguageClient
 
@@ -127,7 +127,7 @@ class KotlinLanguageServer(
         val progress = params.workDoneToken?.let { LanguageClientProgress("Workspace folders", it, client) }
 
         val folders = params.workspaceFolders
-        if(folders.size == 0) {
+        if(folders.isEmpty()) {
             throw RuntimeException("No workspace folders specified!")
         }
         if (folders.size > 1) {
@@ -136,8 +136,8 @@ class KotlinLanguageServer(
         val folder = folders.first()
         val root = Paths.get(parseURI(folder.uri))
 
-        val storagePath = getStoragePath(params) ?: root
-        setupDB(storagePath)
+        setupDB(root)
+        sourcePath.index.createTables()
 
         LOG.info("Adding workspace folder {}", folder.name)
 

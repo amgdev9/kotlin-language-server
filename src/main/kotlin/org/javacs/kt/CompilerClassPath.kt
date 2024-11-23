@@ -21,7 +21,6 @@ class CompilerClassPath(
     var workspaceRoot: Path? = null
 
     private val javaSourcePath = mutableSetOf<Path>()
-    private val buildScriptClassPath = mutableSetOf<Path>()
     val classPath = mutableSetOf<ClassPathEntry>()
     val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
     val javaHome: String? = System.getProperty("java.home", null)

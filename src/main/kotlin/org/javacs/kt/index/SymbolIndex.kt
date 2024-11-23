@@ -7,8 +7,8 @@ import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.name.FqName
 import org.javacs.kt.LOG
-import org.javacs.kt.DatabaseService
 import org.javacs.kt.LanguageClientProgress
+import org.javacs.kt.getDB
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -80,14 +80,10 @@ class PositionEntity(id: EntityID<Int>) : IntEntity(id) {
  * A global view of all available symbols across all packages.
  */
 class SymbolIndex {
-    private val db: Database by lazy {
-        databaseService.db ?: Database.connect("jdbc:h2:mem:symbolindex;DB_CLOSE_DELAY=-1", "org.h2.Driver")
-    }
-
     var progressFactory: LanguageClientProgress.Factory? = null
 
-    init {
-        transaction(db) {
+    fun createTables() {
+        transaction(getDB()) {
             SchemaUtils.createMissingTablesAndColumns(Symbols, Locations, Ranges, Positions)
         }
     }
@@ -98,7 +94,7 @@ class SymbolIndex {
 
         progressFactory?.create("Indexing")?.thenApplyAsync { progress ->
             try {
-                transaction(db) {
+                transaction(getDB()) {
                     // Remove everything first.
                     Symbols.deleteAll()
                     // Add new ones.
@@ -121,7 +117,7 @@ class SymbolIndex {
         LOG.info("Updating symbol index...")
 
         try {
-            transaction(db) {
+            transaction(getDB()) {
                 removeDeclarations(remove)
                 addDeclarations(add)
 
@@ -175,7 +171,7 @@ class SymbolIndex {
         fqName.toString().length <= MAX_FQNAME_LENGTH
             && fqName.shortName().toString().length <= MAX_SHORT_NAME_LENGTH
 
-    fun query(prefix: String, receiverType: FqName? = null, limit: Int = 20, suffix: String = "%"): List<Symbol> = transaction(db) {
+    fun query(prefix: String, receiverType: FqName? = null, limit: Int = 20, suffix: String = "%"): List<Symbol> = transaction(getDB()) {
         // TODO: Extension completion currently only works if the receiver matches exactly,
         //       ideally this should work with subtypes as well
         SymbolEntity.find {

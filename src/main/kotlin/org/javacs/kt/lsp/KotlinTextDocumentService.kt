@@ -57,9 +57,6 @@ class KotlinTextDocumentService(
     private val TextDocumentIdentifier.filePath: Path?
         get() = parseURI(uri).filePath
 
-    private val TextDocumentIdentifier.content: String
-        get() = sourcePath.content(parseURI(uri))
-
     fun connect(client: LanguageClient) {
         this.client = client
     }
@@ -152,7 +149,6 @@ class KotlinTextDocumentService(
         TODO("not implemented")
     }
 
-    @Suppress("DEPRECATION")
     override fun documentSymbol(params: DocumentSymbolParams): CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> = async.compute {
         LOG.info("Find symbols in {}", describeURI(params.textDocument.uri))
 
@@ -188,10 +184,6 @@ class KotlinTextDocumentService(
         val uri = parseURI(params.textDocument.uri)
         sourceFiles.close(uri)
         clearDiagnostics(uri)
-    }
-
-    override fun formatting(params: DocumentFormattingParams): CompletableFuture<List<TextEdit>> = async.compute {
-        emptyList()
     }
 
     override fun didChange(params: DidChangeTextDocumentParams) {

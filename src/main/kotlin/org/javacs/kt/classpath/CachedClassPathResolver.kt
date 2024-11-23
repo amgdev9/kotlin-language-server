@@ -1,6 +1,7 @@
 package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
+import org.javacs.kt.getDB
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -43,8 +44,7 @@ internal class CachedClassPathResolver(
     private val wrapped: ClassPathResolver
 ) : ClassPathResolver {
     init {
-        val db = getDB()
-        transaction(db) {
+        transaction(getDB()) {
             SchemaUtils.createMissingTablesAndColumns(
                 ClassPathMetadataCache, ClassPathCacheEntry
             )
@@ -78,7 +78,7 @@ internal class CachedClassPathResolver(
     override val currentBuildFileVersion: Long get() = wrapped.currentBuildFileVersion
 
     private var cachedClassPathEntries: Set<ClassPathEntry>
-        get() = transaction(db) {
+        get() = transaction(getDB()) {
             ClassPathCacheEntryEntity.all().map {
                 ClassPathEntry(
                     compiledJar = Paths.get(it.compiledJar),
@@ -86,7 +86,7 @@ internal class CachedClassPathResolver(
                 )
             }.toSet()
         }
-        set(newEntries) = transaction(db) {
+        set(newEntries) = transaction(getDB()) {
             ClassPathCacheEntry.deleteAll()
             newEntries.map {
                 ClassPathCacheEntryEntity.new {
@@ -97,7 +97,7 @@ internal class CachedClassPathResolver(
         }
 
     private var cachedClassPathMetadata
-        get() = transaction(db) {
+        get() = transaction(getDB()) {
             ClassPathMetadataCacheEntity.all().map {
                 ClasspathMetadata(
                     includesSources = it.includesSources,
@@ -105,7 +105,7 @@ internal class CachedClassPathResolver(
                 )
             }.firstOrNull()
         }
-        set(newClassPathMetadata) = transaction(db) {
+        set(newClassPathMetadata) = transaction(getDB()) {
             ClassPathMetadataCache.deleteAll()
             val newClassPathMetadataRow = newClassPathMetadata ?: ClasspathMetadata()
             ClassPathMetadataCacheEntity.new {
@@ -115,7 +115,7 @@ internal class CachedClassPathResolver(
         }
 
     private fun updateClasspathCache(newClasspathEntries: Set<ClassPathEntry>, includesSources: Boolean) {
-        transaction(db) {
+        transaction(getDB()) {
             cachedClassPathEntries = newClasspathEntries
             cachedClassPathMetadata = cachedClassPathMetadata?.copy(
                 includesSources = includesSources,

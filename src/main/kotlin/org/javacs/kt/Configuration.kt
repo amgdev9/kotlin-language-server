@@ -1,43 +1,6 @@
 package org.javacs.kt
 
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
-import com.google.gson.JsonParseException
-import org.eclipse.lsp4j.InitializeParams
 import org.eclipse.lsp4j.DiagnosticSeverity
-import java.lang.reflect.Type
-import java.nio.file.InvalidPathException
-import java.nio.file.Path
-import java.nio.file.Paths
-
-fun getStoragePath(params: InitializeParams): Path? {
-    if (params.initializationOptions == null) return null
-
-    val gson = GsonBuilder().registerTypeHierarchyAdapter(Path::class.java, GsonPathConverter()).create()
-    val options = gson.fromJson(params.initializationOptions as JsonElement, InitializationOptions::class.java)
-
-    return options?.storagePath
-}
-
-data class InitializationOptions(
-    // A path to a directory used by the language server to store data. Used for caching purposes.
-    val storagePath: Path?
-)
-
-class GsonPathConverter : JsonDeserializer<Path?> {
-
-    @Throws(JsonParseException::class)
-    override fun deserialize(json: JsonElement, type: Type?, context: JsonDeserializationContext?): Path? {
-        return try {
-            Paths.get(json.asString)
-        } catch (ex: InvalidPathException) {
-            LOG.printStackTrace(ex)
-            null
-        }
-    }
-}
 
 data class Configuration(
     val codegen: Codegen = Codegen(),

@@ -38,7 +38,7 @@ fun setupDB(storagePath: Path) {
     val currentVersion = transaction(db) {
         SchemaUtils.createMissingTablesAndColumns(DatabaseMetadata)
 
-        DatabaseMetadataEntity.all().firstOrNull()?.version ?: 0
+        DatabaseMetadataEntity.all().firstOrNull()?.version
     }
 
     if (currentVersion == DB_VERSION) {
@@ -48,7 +48,7 @@ fun setupDB(storagePath: Path) {
 
     LOG.info("Database has version $currentVersion != $DB_VERSION (the required version), therefore it will be rebuilt...")
 
-    deleteDb(storagePath)
+    Files.deleteIfExists(storagePath.resolve(DB_FILENAME))
     db = getDbFromFile(storagePath)
 
     transaction(db) {
@@ -59,16 +59,10 @@ fun setupDB(storagePath: Path) {
     }
 }
 
-private fun deleteDb(storagePath: Path) {
-    Files.deleteIfExists(getDbFilePath(storagePath))
-}
-
 private fun getDbFromFile(storagePath: Path): Database {
     if (!Files.isDirectory(storagePath)) {
         throw RuntimeException("DB storage path is not a folder")
     }
 
-    return Database.connect("jdbc:sqlite:${getDbFilePath(storagePath)}")
+    return Database.connect("jdbc:sqlite:${storagePath.resolve(DB_FILENAME)}")
 }
-
-private fun getDbFilePath(storagePath: Path) = Path.of(storagePath.toString(), DB_FILENAME)
