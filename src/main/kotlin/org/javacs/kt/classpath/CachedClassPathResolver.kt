@@ -38,92 +38,87 @@ class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
     var sourceJar by ClassPathCacheEntry.sourceJar
 }
 
-/** A classpath resolver that caches another resolver */
-class CachedClassPathResolver(
-    private val path: Path
-) {
-    init {
-        transaction(getDB()) {
-            SchemaUtils.createMissingTablesAndColumns(
-                ClassPathMetadataCache, ClassPathCacheEntry
+fun createCachedResolverTables() {
+    transaction(getDB()) {
+        SchemaUtils.createMissingTablesAndColumns(
+            ClassPathMetadataCache, ClassPathCacheEntry
+        )
+    }
+}
+
+fun getCachedClasspath(path: Path): Set<ClassPathEntry> {
+    if (!dependenciesChanged(path)) {
+        LOG.info("Classpath has not changed. Fetching from cache")
+        return cachedClassPathEntries
+    }
+
+    LOG.info("Cached classpath is outdated or not found. Resolving again")
+
+    val newClasspath = getGradleClasspath(path)
+    updateClasspathCache(path, newClasspath, false)
+
+    return newClasspath
+}
+
+fun getCachedClasspathWithSources(path: Path): Set<ClassPathEntry> {
+    val classpath = cachedClassPathMetadata
+    if (classpath != null && !dependenciesChanged(path) && classpath.includesSources) return cachedClassPathEntries
+
+    val newClasspath = getGradleClasspath(path)
+    updateClasspathCache(path, newClasspath, true)
+
+    return newClasspath
+}
+
+private var cachedClassPathEntries: Set<ClassPathEntry>
+    get() = transaction(getDB()) {
+        ClassPathCacheEntryEntity.all().map {
+            ClassPathEntry(
+                compiledJar = Paths.get(it.compiledJar),
+                sourceJar = it.sourceJar?.let(Paths::get)
             )
-        }
+        }.toSet()
     }
-
-    val classpath: Set<ClassPathEntry> get() {
-        if (!dependenciesChanged(path)) {
-            LOG.info("Classpath has not changed. Fetching from cache")
-            return cachedClassPathEntries
-        }
-
-        LOG.info("Cached classpath is outdated or not found. Resolving again")
-
-        val newClasspath = getGradleClasspath(path)
-        updateClasspathCache(path, newClasspath, false)
-
-        return newClasspath
-    }
-
-    val classpathWithSources: Set<ClassPathEntry> get() {
-        val classpath = cachedClassPathMetadata
-        if (classpath != null && !dependenciesChanged(path) && classpath.includesSources) return cachedClassPathEntries
-
-        val newClasspath = getGradleClasspath(path)
-        updateClasspathCache(path, newClasspath, true)
-
-        return newClasspath
-    }
-
-    private var cachedClassPathEntries: Set<ClassPathEntry>
-        get() = transaction(getDB()) {
-            ClassPathCacheEntryEntity.all().map {
-                ClassPathEntry(
-                    compiledJar = Paths.get(it.compiledJar),
-                    sourceJar = it.sourceJar?.let(Paths::get)
-                )
-            }.toSet()
-        }
-        set(newEntries) = transaction(getDB()) {
-            ClassPathCacheEntry.deleteAll()
-            newEntries.map {
-                ClassPathCacheEntryEntity.new {
-                    compiledJar = it.compiledJar.toString()
-                    sourceJar = it.sourceJar?.toString()
-                }
+    set(newEntries) = transaction(getDB()) {
+        ClassPathCacheEntry.deleteAll()
+        newEntries.map {
+            ClassPathCacheEntryEntity.new {
+                compiledJar = it.compiledJar.toString()
+                sourceJar = it.sourceJar?.toString()
             }
         }
+    }
 
-    private var cachedClassPathMetadata
-        get() = transaction(getDB()) {
-            ClassPathMetadataCacheEntity.all().map {
-                ClasspathMetadata(
-                    includesSources = it.includesSources,
-                    buildFileVersion = it.buildFileVersion
-                )
-            }.firstOrNull()
-        }
-        set(newClassPathMetadata) = transaction(getDB()) {
-            ClassPathMetadataCache.deleteAll()
-            val newClassPathMetadataRow = newClassPathMetadata ?: ClasspathMetadata()
-            ClassPathMetadataCacheEntity.new {
-                includesSources = newClassPathMetadataRow.includesSources
-                buildFileVersion = newClassPathMetadataRow.buildFileVersion
-            }
-        }
-
-    private fun updateClasspathCache(path: Path, newClasspathEntries: Set<ClassPathEntry>, includesSources: Boolean) {
-        transaction(getDB()) {
-            cachedClassPathEntries = newClasspathEntries
-            cachedClassPathMetadata = cachedClassPathMetadata?.copy(
-                includesSources = includesSources,
-                buildFileVersion = getGradleCurrentBuildFileVersion(path)
-            ) ?: ClasspathMetadata()
+private var cachedClassPathMetadata
+    get() = transaction(getDB()) {
+        ClassPathMetadataCacheEntity.all().map {
+            ClasspathMetadata(
+                includesSources = it.includesSources,
+                buildFileVersion = it.buildFileVersion
+            )
+        }.firstOrNull()
+    }
+    set(newClassPathMetadata) = transaction(getDB()) {
+        ClassPathMetadataCache.deleteAll()
+        val newClassPathMetadataRow = newClassPathMetadata ?: ClasspathMetadata()
+        ClassPathMetadataCacheEntity.new {
+            includesSources = newClassPathMetadataRow.includesSources
+            buildFileVersion = newClassPathMetadataRow.buildFileVersion
         }
     }
 
-    private fun dependenciesChanged(path: Path): Boolean {
-        return (cachedClassPathMetadata?.buildFileVersion ?: 0) < getGradleCurrentBuildFileVersion(path)
+private fun updateClasspathCache(path: Path, newClasspathEntries: Set<ClassPathEntry>, includesSources: Boolean) {
+    transaction(getDB()) {
+        cachedClassPathEntries = newClasspathEntries
+        cachedClassPathMetadata = cachedClassPathMetadata?.copy(
+            includesSources = includesSources,
+            buildFileVersion = getGradleCurrentBuildFileVersion(path)
+        ) ?: ClasspathMetadata()
     }
+}
+
+private fun dependenciesChanged(path: Path): Boolean {
+    return (cachedClassPathMetadata?.buildFileVersion ?: 0) < getGradleCurrentBuildFileVersion(path)
 }
 
 private data class ClasspathMetadata(

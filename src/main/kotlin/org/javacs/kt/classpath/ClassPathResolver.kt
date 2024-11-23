@@ -14,17 +14,25 @@ fun getBuildGradleFile(workspaceRoot: Path): Path? {
     return null
 }
 
-fun defaultClassPathResolver(workspaceRoot: Path): CachedClassPathResolver {
+fun getClasspath(workspaceRoot: Path): Set<ClassPathEntry> {
     // Check for build.gradle or build.gradle.kts
     val buildGradleFile = getBuildGradleFile(workspaceRoot)
     if(buildGradleFile == null) throw RuntimeException("build.gradle file not found")
 
-    return CachedClassPathResolver(buildGradleFile)
+    return getCachedClasspath(buildGradleFile)
 }
 
-fun getClasspathOrEmpty(it: CachedClassPathResolver): Set<ClassPathEntry> {
+fun getClasspathWithSources(workspaceRoot: Path): Set<ClassPathEntry> {
+    // Check for build.gradle or build.gradle.kts
+    val buildGradleFile = getBuildGradleFile(workspaceRoot)
+    if(buildGradleFile == null) throw RuntimeException("build.gradle file not found")
+
+    return getCachedClasspathWithSources(buildGradleFile)
+}
+
+fun getClasspathOrEmpty(path: Path): Set<ClassPathEntry> {
     try {
-        return it.classpath
+        return getClasspath(path)
     } catch (e: Exception) {
         LOG.info(e.stackTraceToString())
         LOG.warn("Could not resolve classpath: {}", e.message)

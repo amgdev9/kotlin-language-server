@@ -1,8 +1,9 @@
 package org.javacs.kt
 
 import org.javacs.kt.classpath.ClassPathEntry
-import org.javacs.kt.classpath.defaultClassPathResolver
+import org.javacs.kt.classpath.createCachedResolverTables
 import org.javacs.kt.classpath.getClasspathOrEmpty
+import org.javacs.kt.classpath.getClasspathWithSources
 import org.javacs.kt.util.AsyncExecutor
 import java.io.Closeable
 import java.io.File
@@ -50,11 +51,11 @@ class CompilerClassPath(
             throw RuntimeException("Workspace root not set")
         }
 
-        val resolver = defaultClassPathResolver(workspaceRoot)
+        createCachedResolverTables()
         var refreshCompiler = updateJavaSourcePath
 
         if (updateClassPath) {
-            val newClassPath = getClasspathOrEmpty(resolver)
+            val newClassPath = getClasspathOrEmpty(workspaceRoot)
             if (newClassPath != classPath) {
                 synchronized(classPath) {
                     syncPaths(classPath, newClassPath, "class path") { it.compiledJar }
@@ -63,7 +64,7 @@ class CompilerClassPath(
             }
 
             async.compute {
-                val newClassPathWithSources = resolver.classpathWithSources
+                val newClassPathWithSources = getClasspathWithSources(workspaceRoot)
                 synchronized(classPath) {
                     syncPaths(classPath, newClassPathWithSources, "class path with sources") { it.compiledJar }
                 }
