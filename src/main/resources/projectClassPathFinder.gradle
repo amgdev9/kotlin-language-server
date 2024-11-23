@@ -1,10 +1,6 @@
 allprojects { project ->
     tasks.register('kotlinLSPProjectDeps') { task ->
         doLast {
-            System.out.println ""
-            System.out.println "gradle-version $gradleVersion"
-            System.out.println "kotlin-lsp-project ${project.name}"
-
             if (project.hasProperty('android')) {
                 project.android.getBootClasspath().each {
                     System.out.println "kotlin-lsp-gradle $it"
@@ -51,8 +47,15 @@ allprojects { project ->
                     }
                 }
             } else if (project.hasProperty('sourceSets')) {
-                // Print the list of all dependencies jar files.
                 sourceSets.forEach {
+                    it.java.srcDirs.forEach {
+                        System.out.println "kotlin-lsp-sourcedir-java $it"
+                    }
+                    if(it.hasProperty("kotlin")) {
+                        it.kotlin.srcDirs.forEach {
+                            System.out.println "kotlin-lsp-sourcedir-kotlin $it"
+                        }
+                    }
                     it.compileClasspath.forEach {
                         System.out.println "kotlin-lsp-gradle $it"
                     }

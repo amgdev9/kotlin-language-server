@@ -7,21 +7,29 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-fun getGradleClasspath(path: Path): Set<ClassPathEntry> {
+data class GradleProjectInfo(
+    val classPath: Set<ClassPathEntry>,
+    val javaSourceDirs: Set<Path>,
+    val kotlinSourceDirs: Set<Path>,
+)
+
+fun getGradleProjectInfo(path: Path): GradleProjectInfo {
     val projectDirectory = path.parent
 
-    val classpath = readDependenciesViaGradleCLI(projectDirectory)
-    if (classpath.isNotEmpty()) {
-        LOG.info("Successfully resolved dependencies for '${projectDirectory.fileName}' using Gradle")
-    }
+    val projectInfo = readDependenciesViaGradleCLI(projectDirectory)
+    LOG.info("Resolved dependencies for '${projectDirectory.fileName}' using Gradle")
 
-    return classpath.asSequence().map { ClassPathEntry(it, null) }.toSet()
+    return projectInfo
 }
 
 fun getGradleCurrentBuildFileVersion(path: Path) = path.toFile().lastModified()
 
-private fun readDependenciesViaGradleCLI(projectDirectory: Path): Set<Path> {
-    LOG.info("Resolving dependencies for '{}' through Gradle's CLI using tasks {}...", projectDirectory.fileName, "kotlinLSPProjectDeps")
+private fun readDependenciesViaGradleCLI(projectDirectory: Path): GradleProjectInfo {
+    LOG.info(
+        "Resolving dependencies for '{}' through Gradle's CLI using tasks {}...",
+        projectDirectory.fileName,
+        "kotlinLSPProjectDeps"
+    )
 
     val tmpScript = gradleScriptToTempFile("projectClassPathFinder.gradle").toPath().toAbsolutePath()
     val gradle = getGradleCommand(projectDirectory)
@@ -29,17 +37,11 @@ private fun readDependenciesViaGradleCLI(projectDirectory: Path): Set<Path> {
     val command = "$gradle -I $tmpScript kotlinLSPProjectDeps --console=plain"
     val dependencies = findGradleCLIDependencies(command, projectDirectory)
 
-    if(dependencies != null) {
-        LOG.debug("Classpath for task {}", dependencies)
-    }
+    LOG.debug("Classpath for task {}", dependencies)
 
     Files.delete(tmpScript)
 
     return dependencies
-        .orEmpty()
-        .asSequence()
-        .filter { it.toString().lowercase().endsWith(".jar") || Files.isDirectory(it) } // Some Gradle plugins seem to cause this to output POMs, therefore filter JARs
-        .toSet()
 }
 
 private fun gradleScriptToTempFile(scriptName: String): File {
@@ -68,7 +70,7 @@ private fun getGradleCommand(workspace: Path): Path {
     throw RuntimeException("Could not find 'gradle' on PATH")
 }
 
-private fun findGradleCLIDependencies(command: String, projectDirectory: Path): Set<Path>? {
+private fun findGradleCLIDependencies(command: String, projectDirectory: Path): GradleProjectInfo {
     val (result, errors) = execAndReadStdoutAndStderr(command, projectDirectory)
 
     if ("FAILURE: Build failed" in errors) {
@@ -84,13 +86,30 @@ private fun findGradleCLIDependencies(command: String, projectDirectory: Path): 
     return parseGradleCLIDependencies(result)
 }
 
-private val artifactPattern by lazy { "kotlin-lsp-gradle (.+)(?:\r?\n)".toRegex() }
+private fun parseGradleCLIDependencies(output: String): GradleProjectInfo {
+    val javaSourceDirs = mutableSetOf<Path>()
+    val kotlinSourceDirs = mutableSetOf<Path>()
+    val classpath = mutableSetOf<ClassPathEntry>()
 
-private fun parseGradleCLIDependencies(output: String): Set<Path>? {
-    return artifactPattern.findAll(output)
-        .mapNotNull { it.groups[1]?.value }
-        .mapNotNull { Paths.get(it) }
-        .toSet()
+    output.splitToSequence("\n").forEach {
+        val words = it.split(" ")
+        if(words.size != 2) return@forEach
+        val (type, path) = words
+
+        if(type == "kotlin-lsp-sourcedir-java") {
+            javaSourceDirs.add(Paths.get(path))
+        } else if(type == "kotlin-lsp-sourcedir-kotlin") {
+            kotlinSourceDirs.add(Paths.get(path))
+        } else if(type == "kotlin-lsp-gradle" && path.endsWith(".jar")) {
+            classpath.add(ClassPathEntry(Paths.get(path), null))
+        }
+    }
+
+    return GradleProjectInfo(
+        javaSourceDirs = javaSourceDirs,
+        kotlinSourceDirs = kotlinSourceDirs,
+        classPath = classpath
+    )
 }
 
 private fun execAndReadStdoutAndStderr(shellCommand: String, directory: Path): Pair<String, String> {

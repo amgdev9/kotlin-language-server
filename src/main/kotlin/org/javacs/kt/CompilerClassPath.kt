@@ -4,12 +4,15 @@ import org.javacs.kt.classpath.ClassPathEntry
 import org.javacs.kt.classpath.createCachedResolverTables
 import org.javacs.kt.classpath.getClasspathOrEmpty
 import org.javacs.kt.classpath.getClasspathWithSources
+import org.javacs.kt.classpath.getGradleProjectInfo
 import org.javacs.kt.util.AsyncExecutor
 import java.io.Closeable
 import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.extension
+import kotlin.streams.asSequence
 
 /**
  * Manages the class path (compiled JARs, etc), the Java source path
@@ -56,9 +59,9 @@ class CompilerClassPath(
 
         if (updateClassPath) {
             val newClassPath = getClasspathOrEmpty(workspaceRoot)
-            if (newClassPath != classPath) {
+            if (newClassPath.classPath != classPath) {
                 synchronized(classPath) {
-                    syncPaths(classPath, newClassPath, "class path") { it.compiledJar }
+                    syncPaths(classPath, newClassPath.classPath, "class path") { it.compiledJar }
                 }
                 refreshCompiler = true
             }
@@ -66,7 +69,7 @@ class CompilerClassPath(
             async.compute {
                 val newClassPathWithSources = getClasspathWithSources(workspaceRoot)
                 synchronized(classPath) {
-                    syncPaths(classPath, newClassPathWithSources, "class path with sources") { it.compiledJar }
+                    syncPaths(classPath, newClassPathWithSources.classPath, "class path with sources") { it.compiledJar }
                 }
             }
         }
@@ -107,10 +110,12 @@ class CompilerClassPath(
             throw RuntimeException("Workspace root was set")
         }
 
+        val projectInfo = getGradleProjectInfo(root)
+
         LOG.info("Searching for dependencies and Java sources in workspace root {}", root)
 
         workspaceRoot = root
-        javaSourcePath.addAll(findJavaSourceFiles(root))
+        javaSourcePath.addAll(findJavaSourceFiles(projectInfo.javaSourceDirs))
 
         return refresh()
     }
@@ -119,16 +124,16 @@ class CompilerClassPath(
         LOG.info("Removing dependencies and Java source path from workspace root {}", root)
 
         workspaceRoot = null
-        javaSourcePath.removeAll(findJavaSourceFiles(root))
+        javaSourcePath.clear()
 
         return refresh()
     }
 
-    private fun findJavaSourceFiles(root: Path): Set<Path> {
-        val sourceMatcher = FileSystems.getDefault().getPathMatcher("glob:*.java")
-        return SourceExclusions(listOf(root))
-            .walkIncluded()
-            .filter { sourceMatcher.matches(it.fileName) }
+    private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
+        return javaSourceDirs.asSequence()
+            .flatMap {
+                Files.walk(it).filter { it.extension == "java" }.asSequence()
+            }
             .toSet()
     }
 

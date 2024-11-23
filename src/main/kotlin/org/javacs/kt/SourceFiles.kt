@@ -4,6 +4,7 @@ import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import com.intellij.lang.Language
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
+import org.javacs.kt.classpath.getGradleProjectInfo
 import org.javacs.kt.util.filePath
 import org.javacs.kt.util.describeURIs
 import org.javacs.kt.util.describeURI
@@ -13,8 +14,10 @@ import java.io.StringWriter
 import java.io.IOException
 import java.io.FileNotFoundException
 import java.net.URI
-import java.nio.file.FileSystems
+import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.extension
+import kotlin.streams.asSequence
 
 private class SourceVersion(val content: String, val version: Int, val language: Language?, val isTemporary: Boolean)
 
@@ -62,16 +65,13 @@ class SourceFiles(
     sourcePath: SourcePath,
     private val contentProvider: URIContentProvider
 ) {
-    private val workspaceRoots = mutableSetOf<Path>()
-    private var exclusions = SourceExclusions(workspaceRoots)
+    private var workspaceRoot: Path? = null
     private val files = NotifySourcePath(sourcePath)
     private val open = mutableSetOf<URI>()
 
     fun open(uri: URI, content: String, version: Int) {
-        if (isIncluded(uri)) {
-            files[uri] = SourceVersion(content, version, languageOf(uri), isTemporary = false)
-            open.add(uri)
-        }
+        files[uri] = SourceVersion(content, version, languageOf(uri), isTemporary = false)
+        open.add(uri)
     }
 
     fun close(uri: URI) {
@@ -91,8 +91,6 @@ class SourceFiles(
     }
 
     fun edit(uri: URI, newVersion: Int, contentChanges: List<TextDocumentContentChangeEvent>) {
-        if (!isIncluded(uri)) return
-
         val existing = files[uri]!!
         var newText = existing.content
 
@@ -137,7 +135,7 @@ class SourceFiles(
         null
     }
 
-    private fun isSource(uri: URI): Boolean = isIncluded(uri) && languageOf(uri) != null
+    private fun isSource(uri: URI): Boolean = languageOf(uri) != null
 
     private fun languageOf(uri: URI): Language? {
         val fileName = uri.filePath?.fileName?.toString() ?: return null
@@ -146,8 +144,10 @@ class SourceFiles(
     }
 
     fun addWorkspaceRoot(root: Path) {
-        LOG.info("Searching $root using exclusions: ${exclusions.excludedPatterns}")
-        val addSources = findSourceFiles(root)
+        val projectInfo = getGradleProjectInfo(root)
+
+        LOG.info("Searching $root...")
+        val addSources = findKotlinSourceFiles(projectInfo.kotlinSourceDirs)
 
         LOG.info("Adding {} under {} to source path", describeURIs(addSources), root)
 
@@ -162,37 +162,28 @@ class SourceFiles(
             files[uri] = sourceVersion
         }
 
-        workspaceRoots.add(root)
-        updateExclusions()
+        workspaceRoot = root
     }
 
-    private fun findSourceFiles(root: Path): Set<URI> {
-        val sourceMatcher = FileSystems.getDefault().getPathMatcher("glob:*.{kt,kts}")
-        return SourceExclusions(listOf(root))
-            .walkIncluded()
-            .filter { sourceMatcher.matches(it.fileName) }
-            .map(Path::toUri)
+    private fun findKotlinSourceFiles(kotlinSourceDirs: Set<Path>): Set<URI> {
+        return kotlinSourceDirs.asSequence()
+            .flatMap {
+                Files.walk(it).filter { it.extension == "kt" }.asSequence()
+            }
+            .map { it.toUri() }
             .toSet()
     }
 
     fun removeWorkspaceRoot(root: Path) {
-        val rmSources = files.keys.filter { it.filePath?.startsWith(root) ?: false }
+        val rmSources = files.keys.filter { it.filePath?.startsWith(root) == true }
 
         LOG.info("Removing {} under {} to source path", describeURIs(rmSources), root)
 
         files.removeAll(rmSources)
-        workspaceRoots.remove(root)
-        updateExclusions()
-    }
-
-    fun updateExclusions() {
-        exclusions = SourceExclusions(workspaceRoots)
-        LOG.info("Updated exclusions: ${exclusions.excludedPatterns}")
+        workspaceRoot = null
     }
 
     fun isOpen(uri: URI): Boolean = (uri in open)
-
-    fun isIncluded(uri: URI): Boolean = exclusions.isURIIncluded(uri)
 }
 
 private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): String {

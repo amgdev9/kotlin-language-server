@@ -46,28 +46,34 @@ fun createCachedResolverTables() {
     }
 }
 
-fun getCachedClasspath(path: Path): Set<ClassPathEntry> {
-    if (!dependenciesChanged(path)) {
+fun getCachedClasspath(path: Path): GradleProjectInfo {
+    return getGradleProjectInfo(path)
+
+    // TODO Implement caching for source files paths
+    /*if (!dependenciesChanged(path)) {
         LOG.info("Classpath has not changed. Fetching from cache")
         return cachedClassPathEntries
     }
 
     LOG.info("Cached classpath is outdated or not found. Resolving again")
 
-    val newClasspath = getGradleClasspath(path)
+    val newClasspath = getGradleProjectInfo(path)
     updateClasspathCache(path, newClasspath, false)
 
-    return newClasspath
+    return newClasspath*/
 }
 
-fun getCachedClasspathWithSources(path: Path): Set<ClassPathEntry> {
-    val classpath = cachedClassPathMetadata
+fun getCachedClasspathWithSources(path: Path): GradleProjectInfo {
+    return getGradleProjectInfo(path)
+
+    // TODO Implement caching for source files paths
+    /*val classpath = cachedClassPathMetadata
     if (classpath != null && !dependenciesChanged(path) && classpath.includesSources) return cachedClassPathEntries
 
-    val newClasspath = getGradleClasspath(path)
+    val newClasspath = getGradleProjectInfo(path)
     updateClasspathCache(path, newClasspath, true)
 
-    return newClasspath
+    return newClasspath*/
 }
 
 private var cachedClassPathEntries: Set<ClassPathEntry>
