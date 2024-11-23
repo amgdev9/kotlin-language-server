@@ -46,5 +46,3 @@ fun <T> noResult(message: String, result: T): T {
 fun <T> emptyResult(message: String): List<T> = noResult(message, emptyList())
 
 fun <T> nullResult(message: String): T? = noResult(message, null)
-
-

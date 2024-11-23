@@ -20,14 +20,6 @@ internal class GradleClassPathResolver(private val path: Path): ClassPathResolve
     }
 
     override val currentBuildFileVersion: Long get() = path.toFile().lastModified()
-
-    companion object {
-        fun maybeCreate(file: Path): GradleClassPathResolver? {
-            if(!file.endsWith("build.gradle") && !file.endsWith("build.gradle.kts")) return null
-
-            return GradleClassPathResolver(file)
-        }
-    }
 }
 
 private fun readDependenciesViaGradleCLI(projectDirectory: Path): Set<Path> {
