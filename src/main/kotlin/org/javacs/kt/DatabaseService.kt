@@ -22,54 +22,53 @@ class DatabaseMetadataEntity(id: EntityID<Int>) : IntEntity(id) {
     var version by DatabaseMetadata.version
 }
 
-class DatabaseService {
-    companion object {
-        const val DB_VERSION = 1
-        const val DB_FILENAME = "kls_database.db"
-    }
+const val DB_VERSION = 1
+const val DB_FILENAME = "kls_database.db"
 
-    var db: Database? = null
-        private set
+private var db: Database? = null
 
-    fun setup(storagePath: Path?) {
-        db = getDbFromFile(storagePath)
-
-        val currentVersion = transaction(db) {
-            SchemaUtils.createMissingTablesAndColumns(DatabaseMetadata)
-
-            DatabaseMetadataEntity.all().firstOrNull()?.version ?: 0
-        }
-
-        if (currentVersion == DB_VERSION) {
-            LOG.info("Database has the correct version $currentVersion and will be used as-is")
-            return
-        }
-
-        LOG.info("Database has version $currentVersion != $DB_VERSION (the required version), therefore it will be rebuilt...")
-
-        deleteDb(storagePath)
-        db = getDbFromFile(storagePath)
-
-        transaction(db) {
-            SchemaUtils.createMissingTablesAndColumns(DatabaseMetadata)
-
-            DatabaseMetadata.deleteAll()
-            DatabaseMetadata.insert { it[version] = DB_VERSION }
-        }
-    }
-
-    private fun getDbFromFile(storagePath: Path?): Database? {
-        if (storagePath == null) return null
-        if (!Files.isDirectory(storagePath)) return null
-
-        return Database.connect("jdbc:sqlite:${getDbFilePath(storagePath)}")
-    }
-
-    private fun deleteDb(storagePath: Path?) {
-        if(storagePath == null) return
-
-        Files.deleteIfExists(getDbFilePath(storagePath))
-    }
-
-    private fun getDbFilePath(storagePath: Path) = Path.of(storagePath.toString(), DB_FILENAME)
+fun getDB(): Database {
+    if(db == null) throw RuntimeException("DB not set up")
+    return db!!
 }
+
+fun setupDB(storagePath: Path) {
+    db = getDbFromFile(storagePath)
+
+    val currentVersion = transaction(db) {
+        SchemaUtils.createMissingTablesAndColumns(DatabaseMetadata)
+
+        DatabaseMetadataEntity.all().firstOrNull()?.version ?: 0
+    }
+
+    if (currentVersion == DB_VERSION) {
+        LOG.info("Database has the correct version $currentVersion and will be used as-is")
+        return
+    }
+
+    LOG.info("Database has version $currentVersion != $DB_VERSION (the required version), therefore it will be rebuilt...")
+
+    deleteDb(storagePath)
+    db = getDbFromFile(storagePath)
+
+    transaction(db) {
+        SchemaUtils.createMissingTablesAndColumns(DatabaseMetadata)
+
+        DatabaseMetadata.deleteAll()
+        DatabaseMetadata.insert { it[version] = DB_VERSION }
+    }
+}
+
+private fun deleteDb(storagePath: Path) {
+    Files.deleteIfExists(getDbFilePath(storagePath))
+}
+
+private fun getDbFromFile(storagePath: Path): Database {
+    if (!Files.isDirectory(storagePath)) {
+        throw RuntimeException("DB storage path is not a folder")
+    }
+
+    return Database.connect("jdbc:sqlite:${getDbFilePath(storagePath)}")
+}
+
+private fun getDbFilePath(storagePath: Path) = Path.of(storagePath.toString(), DB_FILENAME)

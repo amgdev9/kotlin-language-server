@@ -40,10 +40,10 @@ class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
 
 /** A classpath resolver that caches another resolver */
 internal class CachedClassPathResolver(
-    private val wrapped: ClassPathResolver,
-    private val db: Database
+    private val wrapped: ClassPathResolver
 ) : ClassPathResolver {
     init {
+        val db = getDB()
         transaction(db) {
             SchemaUtils.createMissingTablesAndColumns(
                 ClassPathMetadataCache, ClassPathCacheEntry

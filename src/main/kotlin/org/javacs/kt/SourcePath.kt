@@ -20,15 +20,14 @@ import java.util.concurrent.locks.ReentrantLock
 class SourcePath(
     private val classPath: CompilerClassPath,
     private val contentProvider: URIContentProvider,
-    private val indexingConfig: Configuration.Indexing,
-    databaseService: DatabaseService
+    private val indexingConfig: Configuration.Indexing
 ) {
     private val files = mutableMapOf<URI, SourceFile>()
     private val parseDataWriteLock = ReentrantLock()
 
     private val indexAsync = AsyncExecutor()
     var indexEnabled: Boolean by indexingConfig::enabled
-    val index = SymbolIndex(databaseService)
+    val index = SymbolIndex()
 
     var beforeCompileCallback: () -> Unit = {}
 

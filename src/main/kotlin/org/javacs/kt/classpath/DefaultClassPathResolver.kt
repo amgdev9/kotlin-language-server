@@ -14,13 +14,12 @@ fun getBuildGradleFile(workspaceRoot: Path): Path? {
     return null
 }
 
-fun defaultClassPathResolver(workspaceRoot: Path, db: Database?): ClassPathResolver {
+fun defaultClassPathResolver(workspaceRoot: Path): ClassPathResolver {
     // Check for build.gradle or build.gradle.kts
     val buildGradleFile = getBuildGradleFile(workspaceRoot)
     if(buildGradleFile == null) throw RuntimeException("build.gradle file not found")
 
     val childResolver = GradleClassPathResolver.maybeCreate(buildGradleFile)!!
 
-    if (db != null) return CachedClassPathResolver(childResolver, db)
-    return childResolver
+    return CachedClassPathResolver(childResolver)
 }

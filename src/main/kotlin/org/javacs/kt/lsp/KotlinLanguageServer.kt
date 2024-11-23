@@ -22,6 +22,7 @@ import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
+import org.javacs.kt.setupDB
 import java.io.Closeable
 import java.io.File
 import java.nio.file.Paths
@@ -32,8 +33,7 @@ import kotlin.system.exitProcess
 class KotlinLanguageServer(
     val config: Configuration = Configuration()
 ) : LanguageServer, LanguageClientAware, Closeable {
-    val databaseService = DatabaseService()
-    val classPath = CompilerClassPath(config.compiler, config.codegen, databaseService)
+    val classPath = CompilerClassPath(config.compiler, config.codegen)
 
     private val tempDirectory = TemporaryFolder()
     private val uriContentProvider = URIContentProvider(
@@ -45,7 +45,7 @@ class KotlinLanguageServer(
             )
         )
     )
-    val sourcePath = SourcePath(classPath, uriContentProvider, config.indexing, databaseService)
+    val sourcePath = SourcePath(classPath, uriContentProvider, config.indexing)
     val sourceFiles = SourceFiles(sourcePath, uriContentProvider)
 
     private val textDocuments =
@@ -111,10 +111,7 @@ class KotlinLanguageServer(
             executeCommandProvider = ExecuteCommandOptions()
             documentHighlightProvider = Either.forLeft(true)
         }
-
-        val storagePath = getStoragePath(params)
-        databaseService.setup(storagePath)
-
+ 
         val clientCapabilities = params.capabilities
         config.completion.snippets.enabled =
             clientCapabilities?.textDocument?.completion?.completionItem?.snippetSupport == true
@@ -130,16 +127,21 @@ class KotlinLanguageServer(
         val progress = params.workDoneToken?.let { LanguageClientProgress("Workspace folders", it, client) }
 
         val folders = params.workspaceFolders
+        if(folders.size == 0) {
+            throw RuntimeException("No workspace folders specified!")
+        }
         if (folders.size > 1) {
             LOG.info("Detected ${folders.size} workspace folders, picking the first one...")
         }
         val folder = folders.first()
+        val root = Paths.get(parseURI(folder.uri))
+
+        val storagePath = getStoragePath(params) ?: root
+        setupDB(storagePath)
 
         LOG.info("Adding workspace folder {}", folder.name)
 
         progress?.update("Updating source path", 25)
-
-        val root = Paths.get(parseURI(folder.uri))
 
         // TODO Use gradle to find source files
         sourceFiles.addWorkspaceRoot(root)

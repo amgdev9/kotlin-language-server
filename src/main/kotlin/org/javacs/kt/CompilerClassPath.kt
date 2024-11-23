@@ -16,8 +16,7 @@ import java.nio.file.Path
  */
 class CompilerClassPath(
     private val config: Configuration.Compiler,
-    private val codegenConfig: Configuration.Codegen,
-    private val databaseService: DatabaseService
+    private val codegenConfig: Configuration.Codegen
 ) : Closeable {
     var workspaceRoot: Path? = null
 
@@ -52,7 +51,7 @@ class CompilerClassPath(
             throw RuntimeException("Workspace root not set")
         }
 
-        val resolver = defaultClassPathResolver(workspaceRoot, databaseService.db)
+        val resolver = defaultClassPathResolver(workspaceRoot)
         var refreshCompiler = updateJavaSourcePath
 
         if (updateClassPath) {
