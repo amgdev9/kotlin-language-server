@@ -39,10 +39,9 @@ class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
 }
 
 /** A classpath resolver that caches another resolver */
-internal class CachedClassPathResolver(
-    private val path: Path,
-    private val wrapped: ClassPathResolver
-) : ClassPathResolver {
+class CachedClassPathResolver(
+    private val path: Path
+) {
     init {
         transaction(getDB()) {
             SchemaUtils.createMissingTablesAndColumns(
@@ -51,7 +50,7 @@ internal class CachedClassPathResolver(
         }
     }
 
-    override val classpath: Set<ClassPathEntry> get() {
+    val classpath: Set<ClassPathEntry> get() {
         if (!dependenciesChanged(path)) {
             LOG.info("Classpath has not changed. Fetching from cache")
             return cachedClassPathEntries
@@ -59,17 +58,17 @@ internal class CachedClassPathResolver(
 
         LOG.info("Cached classpath is outdated or not found. Resolving again")
 
-        val newClasspath = wrapped.classpath
+        val newClasspath = getGradleClasspath(path)
         updateClasspathCache(path, newClasspath, false)
 
         return newClasspath
     }
 
-    override val classpathWithSources: Set<ClassPathEntry> get() {
+    val classpathWithSources: Set<ClassPathEntry> get() {
         val classpath = cachedClassPathMetadata
         if (classpath != null && !dependenciesChanged(path) && classpath.includesSources) return cachedClassPathEntries
 
-        val newClasspath = wrapped.classpathWithSources
+        val newClasspath = getGradleClasspath(path)
         updateClasspathCache(path, newClasspath, true)
 
         return newClasspath

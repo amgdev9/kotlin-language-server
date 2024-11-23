@@ -7,17 +7,15 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-internal class GradleClassPathResolver(private val path: Path): ClassPathResolver {
-    private val projectDirectory: Path get() = path.parent
+fun getGradleClasspath(path: Path): Set<ClassPathEntry> {
+    val projectDirectory = path.parent
 
-    override val classpath: Set<ClassPathEntry> get() {
-        val classpath = readDependenciesViaGradleCLI(projectDirectory)
-        if (classpath.isNotEmpty()) {
-            LOG.info("Successfully resolved dependencies for '${projectDirectory.fileName}' using Gradle")
-        }
-
-        return classpath.asSequence().map { ClassPathEntry(it, null) }.toSet()
+    val classpath = readDependenciesViaGradleCLI(projectDirectory)
+    if (classpath.isNotEmpty()) {
+        LOG.info("Successfully resolved dependencies for '${projectDirectory.fileName}' using Gradle")
     }
+
+    return classpath.asSequence().map { ClassPathEntry(it, null) }.toSet()
 }
 
 fun getGradleCurrentBuildFileVersion(path: Path) = path.toFile().lastModified()
@@ -49,7 +47,7 @@ private fun gradleScriptToTempFile(scriptName: String): File {
     LOG.debug("Creating temporary gradle file {}", gradleConfigFile.absolutePath)
 
     gradleConfigFile.bufferedWriter().use { configWriter ->
-        GradleClassPathResolver::class.java.getResourceAsStream("/$scriptName")!!.bufferedReader().use { configReader ->
+        object {}.javaClass.getResourceAsStream("/$scriptName")!!.bufferedReader().use { configReader ->
             configReader.copyTo(configWriter)
         }
     }
