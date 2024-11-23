@@ -21,7 +21,7 @@ fun defaultClassPathResolver(workspaceRoot: Path): ClassPathResolver {
 
     val childResolver = GradleClassPathResolver(buildGradleFile)
 
-    return CachedClassPathResolver(childResolver)
+    return CachedClassPathResolver(buildGradleFile, childResolver)
 }
 
 fun getClasspathOrEmpty(it: ClassPathResolver): Set<ClassPathEntry> {
@@ -42,14 +42,4 @@ data class ClassPathEntry(
 interface ClassPathResolver {
     val classpath: Set<ClassPathEntry> // may throw exceptions
     val classpathWithSources: Set<ClassPathEntry> get() = classpath
-
-    /**
-     * This should return the current build file version.
-     * It usually translates to the file's lastModified time.
-     * Resolvers that don't have a build file use the default (i.e., 1).
-     * We use 1, because this will prevent any attempt to cache non cacheable resolvers
-     * (see [CachedClassPathResolver.dependenciesChanged]).
-     */
-    val currentBuildFileVersion: Long
-        get() = 1L
 }

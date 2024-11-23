@@ -6,7 +6,6 @@ import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -41,6 +40,7 @@ class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
 
 /** A classpath resolver that caches another resolver */
 internal class CachedClassPathResolver(
+    private val path: Path,
     private val wrapped: ClassPathResolver
 ) : ClassPathResolver {
     init {
@@ -52,7 +52,7 @@ internal class CachedClassPathResolver(
     }
 
     override val classpath: Set<ClassPathEntry> get() {
-        if (!dependenciesChanged()) {
+        if (!dependenciesChanged(path)) {
             LOG.info("Classpath has not changed. Fetching from cache")
             return cachedClassPathEntries
         }
@@ -60,22 +60,20 @@ internal class CachedClassPathResolver(
         LOG.info("Cached classpath is outdated or not found. Resolving again")
 
         val newClasspath = wrapped.classpath
-        updateClasspathCache(newClasspath, false)
+        updateClasspathCache(path, newClasspath, false)
 
         return newClasspath
     }
 
     override val classpathWithSources: Set<ClassPathEntry> get() {
         val classpath = cachedClassPathMetadata
-        if (classpath != null && !dependenciesChanged() && classpath.includesSources) return cachedClassPathEntries
+        if (classpath != null && !dependenciesChanged(path) && classpath.includesSources) return cachedClassPathEntries
 
         val newClasspath = wrapped.classpathWithSources
-        updateClasspathCache(newClasspath, true)
+        updateClasspathCache(path, newClasspath, true)
 
         return newClasspath
     }
-
-    override val currentBuildFileVersion: Long get() = wrapped.currentBuildFileVersion
 
     private var cachedClassPathEntries: Set<ClassPathEntry>
         get() = transaction(getDB()) {
@@ -114,18 +112,18 @@ internal class CachedClassPathResolver(
             }
         }
 
-    private fun updateClasspathCache(newClasspathEntries: Set<ClassPathEntry>, includesSources: Boolean) {
+    private fun updateClasspathCache(path: Path, newClasspathEntries: Set<ClassPathEntry>, includesSources: Boolean) {
         transaction(getDB()) {
             cachedClassPathEntries = newClasspathEntries
             cachedClassPathMetadata = cachedClassPathMetadata?.copy(
                 includesSources = includesSources,
-                buildFileVersion = currentBuildFileVersion
+                buildFileVersion = getGradleCurrentBuildFileVersion(path)
             ) ?: ClasspathMetadata()
         }
     }
 
-    private fun dependenciesChanged(): Boolean {
-        return (cachedClassPathMetadata?.buildFileVersion ?: 0) < wrapped.currentBuildFileVersion
+    private fun dependenciesChanged(path: Path): Boolean {
+        return (cachedClassPathMetadata?.buildFileVersion ?: 0) < getGradleCurrentBuildFileVersion(path)
     }
 }
 

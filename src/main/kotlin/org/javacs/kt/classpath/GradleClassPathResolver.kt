@@ -18,9 +18,9 @@ internal class GradleClassPathResolver(private val path: Path): ClassPathResolve
 
         return classpath.asSequence().map { ClassPathEntry(it, null) }.toSet()
     }
-
-    override val currentBuildFileVersion: Long get() = path.toFile().lastModified()
 }
+
+fun getGradleCurrentBuildFileVersion(path: Path) = path.toFile().lastModified()
 
 private fun readDependenciesViaGradleCLI(projectDirectory: Path): Set<Path> {
     LOG.info("Resolving dependencies for '{}' through Gradle's CLI using tasks {}...", projectDirectory.fileName, "kotlinLSPProjectDeps")
