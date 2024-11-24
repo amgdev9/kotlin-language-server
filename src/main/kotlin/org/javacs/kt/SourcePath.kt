@@ -6,7 +6,7 @@ import org.javacs.kt.util.filePath
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.index.SymbolIndex
 import com.intellij.lang.Language
-import org.javacs.kt.externalsources.URIContentProvider
+import org.javacs.kt.externalsources.contentOf
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
@@ -18,9 +18,7 @@ import java.nio.file.Paths
 import java.net.URI
 import java.util.concurrent.locks.ReentrantLock
 
-class SourcePath(
-    private val contentProvider: URIContentProvider
-) {
+class SourcePath {
     private val files = mutableMapOf<URI, SourceFile>()
     private val parseDataWriteLock = ReentrantLock()
 
@@ -42,7 +40,6 @@ class SourcePath(
         var lastSavedFile: KtFile? = null,
     ) {
         val extension: String? = uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
-        val isScript: Boolean = extension == "kts"
 
         fun put(newContent: String) {
             content = newContent
@@ -103,7 +100,7 @@ class SourcePath(
                 parseIfChanged().apply { compileIfNull() }.let { doPrepareCompiledFile() }
 
         private fun doPrepareCompiledFile(): CompiledFile =
-                CompiledFile(content, compiledFile!!, compiledContext!!, module!!, allIncludingThis(), clientSession.classPath, isScript)
+                CompiledFile(content, compiledFile!!, compiledContext!!, module!!, allIncludingThis(), clientSession.classPath, false)
 
         private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
             if (isTemporary) (all().asSequence() + sequenceOf(parsed!!)).toList()
@@ -119,7 +116,7 @@ class SourcePath(
             // Fallback solution, usually *all* source files
             // should be added/opened through SourceFiles
             LOG.warn("Requested source file {} is not on source path, this is most likely a bug. Adding it now temporarily...", describeURI(uri))
-            put(uri, contentProvider.contentOf(uri), null, temporary = true)
+            put(uri, contentOf(uri), null, temporary = true)
         }
         return files[uri]!!
     }
@@ -249,7 +246,6 @@ class SourcePath(
     fun save(uri: URI) {
         val file = files[uri]
         if (file == null) return
-        if (file.isScript) return
 
         // If the code generation fails for some reason, we generate code for the other files anyway
         try {

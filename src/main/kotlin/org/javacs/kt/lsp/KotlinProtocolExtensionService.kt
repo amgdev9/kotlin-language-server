@@ -6,9 +6,9 @@ import org.eclipse.lsp4j.TextDocumentPositionParams
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment
 import org.javacs.kt.SourcePath
-import org.javacs.kt.externalsources.URIContentProvider
 import org.javacs.kt.actions.listOverridableMembers
 import org.javacs.kt.actions.offset
+import org.javacs.kt.externalsources.contentOf
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.parseURI
 import java.util.concurrent.CompletableFuture
@@ -23,13 +23,12 @@ interface KotlinProtocolExtensions {
 }
 
 class KotlinProtocolExtensionService(
-    private val uriContentProvider: URIContentProvider,
     private val sourcePath: SourcePath
 ) : KotlinProtocolExtensions {
     private val async = AsyncExecutor()
 
     override fun jarClassContents(textDocument: TextDocumentIdentifier): CompletableFuture<String?> = async.compute {
-        uriContentProvider.contentOf(parseURI(textDocument.uri))
+        contentOf(parseURI(textDocument.uri))
     }
 
     override fun overrideMember(position: TextDocumentPositionParams): CompletableFuture<List<CodeAction>> = async.compute {

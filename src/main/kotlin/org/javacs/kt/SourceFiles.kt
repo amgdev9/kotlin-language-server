@@ -4,7 +4,7 @@ import com.intellij.lang.Language
 import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
 import org.javacs.kt.classpath.GradleProjectInfo
-import org.javacs.kt.externalsources.URIContentProvider
+import org.javacs.kt.externalsources.contentOf
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.describeURIs
 import org.javacs.kt.util.filePath
@@ -59,8 +59,7 @@ private class NotifySourcePath(private val sourcePath: SourcePath) {
  * Keep track of the text of all files in the workspace
  */
 class SourceFiles(
-    sourcePath: SourcePath,
-    private val contentProvider: URIContentProvider
+    sourcePath: SourcePath
 ) {
     private var workspaceRoot: Path? = null
     private val files = NotifySourcePath(sourcePath)
@@ -123,7 +122,7 @@ class SourceFiles(
     }
 
     private fun readFromDisk(uri: URI, temporary: Boolean): SourceVersion? = try {
-        val content = contentProvider.contentOf(uri)
+        val content = contentOf(uri)
         SourceVersion(content, -1, languageOf(uri), isTemporary = temporary)
     } catch (_: FileNotFoundException) {
         null

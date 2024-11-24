@@ -2,40 +2,15 @@ package org.javacs.kt.lsp
 
 import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
-import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.TextDocumentService
-import org.javacs.kt.CompiledFile
-import org.javacs.kt.CompilerClassPath
-import org.javacs.kt.Configuration
-import org.javacs.kt.LOG
-import org.javacs.kt.SourceFiles
-import org.javacs.kt.SourcePath
-import org.javacs.kt.externalsources.URIContentProvider
-import org.javacs.kt.codeaction.codeActions
+import org.javacs.kt.*
+import org.javacs.kt.actions.*
 import org.javacs.kt.actions.completion.completions
-import org.javacs.kt.actions.goToDefinition
-import org.javacs.kt.actions.convertDiagnostic
-import org.javacs.kt.actions.hoverAt
-import org.javacs.kt.actions.offset
-import org.javacs.kt.actions.findReferences
-import org.javacs.kt.actions.encodedSemanticTokens
-import org.javacs.kt.actions.fetchSignatureHelpAt
-import org.javacs.kt.actions.renameSymbol
-import org.javacs.kt.actions.documentHighlightsAt
-import org.javacs.kt.actions.provideHints
-import org.javacs.kt.actions.documentSymbols
-import org.javacs.kt.clientSession
-import org.javacs.kt.util.AsyncExecutor
-import org.javacs.kt.util.Debouncer
-import org.javacs.kt.util.TemporaryFolder
-import org.javacs.kt.util.describeURI
-import org.javacs.kt.util.describeURIs
-import org.javacs.kt.util.filePath
-import org.javacs.kt.util.noResult
-import org.javacs.kt.util.parseURI
+import org.javacs.kt.codeaction.codeActions
+import org.javacs.kt.util.*
 import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
-import java.net.URI
 import java.io.Closeable
+import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
@@ -44,8 +19,6 @@ class KotlinTextDocumentService(
     private val sourceFiles: SourceFiles,
     private val sourcePath: SourcePath,
     private val config: Configuration,
-    private val tempDirectory: TemporaryFolder,
-    private val uriContentProvider: URIContentProvider
 ) : TextDocumentService, Closeable {
     private val async = AsyncExecutor()
 
@@ -106,8 +79,6 @@ class KotlinTextDocumentService(
         goToDefinition(
             file,
             cursor,
-            uriContentProvider.classContentProvider,
-            tempDirectory,
             config.externalSources,
             clientSession.classPath
         )

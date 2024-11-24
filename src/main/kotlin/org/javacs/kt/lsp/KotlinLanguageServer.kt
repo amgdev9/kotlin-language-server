@@ -6,25 +6,15 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonDelegate
 import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.LanguageServer
-import org.javacs.kt.ClientSession
-import org.javacs.kt.CompilerClassPath
-import org.javacs.kt.Configuration
-import org.javacs.kt.LOG
-import org.javacs.kt.LogLevel
-import org.javacs.kt.LogMessage
-import org.javacs.kt.SourceFiles
-import org.javacs.kt.SourcePath
-import org.javacs.kt.externalsources.URIContentProvider
-import org.javacs.kt.externalsources.*
+import org.javacs.kt.*
 import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.classpath.getGradleProjectInfo
-import org.javacs.kt.clientSession
+import org.javacs.kt.db.setupDB
+import org.javacs.kt.externalsources.*
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
-import org.javacs.kt.db.setupDB
 import java.io.Closeable
-import java.io.File
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletableFuture.completedFuture
@@ -33,25 +23,14 @@ import kotlin.system.exitProcess
 class KotlinLanguageServer(
     val config: Configuration = Configuration()
 ) : LanguageServer, LanguageClientAware, Closeable {
-    private val tempDirectory = TemporaryFolder()
-    private val uriContentProvider = URIContentProvider(
-        ClassContentProvider(
-            tempDirectory,
-            CompositeSourceArchiveProvider(
-                JdkSourceArchiveProvider(),
-                ClassPathSourceArchiveProvider()
-            )
-        )
-    )
-
-    private val sourcePath by lazy { SourcePath(uriContentProvider) }
-    private val sourceFiles by lazy { SourceFiles(sourcePath, uriContentProvider) }
+    private val sourcePath by lazy { SourcePath() }
+    private val sourceFiles by lazy { SourceFiles(sourcePath) }
 
     private val textDocuments by lazy {
-        KotlinTextDocumentService(sourceFiles, sourcePath, config, tempDirectory, uriContentProvider)
+        KotlinTextDocumentService(sourceFiles, sourcePath, config)
     }
     private val workspaces by lazy { KotlinWorkspaceService(sourceFiles, sourcePath, textDocuments, config) }
-    private val protocolExtensions by lazy { KotlinProtocolExtensionService(uriContentProvider, sourcePath) }
+    private val protocolExtensions by lazy { KotlinProtocolExtensionService(sourcePath) }
 
     private lateinit var client: LanguageClient
 
@@ -115,7 +94,9 @@ class KotlinLanguageServer(
         clientSession = ClientSession(
             db = setupDB(root),
             client = client,
-            classPath = CompilerClassPath(config.compiler, config.codegen)
+            classPath = CompilerClassPath(config.compiler, config.codegen),
+            tempFolder = TemporaryFolder(),
+            decompilerOutputDir = createDecompilerOutputDirectory()
         )
 
         if (folders.size > 1) {
@@ -148,7 +129,7 @@ class KotlinLanguageServer(
     override fun close() {
         textDocumentService.close()
         clientSession.classPath.close()
-        tempDirectory.close()
+        clientSession.tempFolder.close()
         async.shutdown(awaitTermination = true)
 
         LOG.info("Closing language server...")
