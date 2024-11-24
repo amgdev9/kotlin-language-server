@@ -6,7 +6,6 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent
 import org.javacs.kt.classpath.GradleProjectInfo
 import org.javacs.kt.externalsources.contentOf
 import org.javacs.kt.util.describeURI
-import org.javacs.kt.util.describeURIs
 import org.javacs.kt.util.filePath
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import java.io.*
@@ -133,7 +132,7 @@ class SourceFiles {
         LOG.info("Searching $root...")
         val addSources = findKotlinSourceFiles(projectInfo.kotlinSourceDirs)
 
-        LOG.info("Adding {} under {} to source path", describeURIs(addSources), root)
+        LOG.info("Adding {} under {} to source path", "${addSources.size} files", root)
 
         // Load all kotlin files into RAM
         for (uri in addSources) {
@@ -161,7 +160,7 @@ class SourceFiles {
     fun removeWorkspaceRoot(root: Path) {
         val rmSources = files.keys.filter { it.filePath?.startsWith(root) == true }
 
-        LOG.info("Removing {} under {} to source path", describeURIs(rmSources), root)
+        LOG.info("Removing {} under {} to source path", "${rmSources.size} files", root)
 
         files.removeAll(rmSources)
         workspaceRoot = null

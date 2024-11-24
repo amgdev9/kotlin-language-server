@@ -181,7 +181,7 @@ class Compiler(
     }
 
     fun createKtFile(content: String, file: Path = Paths.get("dummy.virtual.kt")): KtFile =
-            createPsiFile(content, file, language = KotlinLanguage.INSTANCE) as KtFile
+        createPsiFile(content, file, language = KotlinLanguage.INSTANCE) as KtFile
 
     fun psiFileFactory(): PsiFileFactory =
         PsiFileFactory.getInstance(defaultCompileEnvironment.environment.project)

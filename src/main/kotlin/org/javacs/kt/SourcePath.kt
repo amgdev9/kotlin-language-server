@@ -39,7 +39,8 @@ class SourcePath {
         val isTemporary: Boolean = false, // A temporary source file will not be returned by .all()
         var lastSavedFile: KtFile? = null,
     ) {
-        val extension: String? = uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
+        val extension: String? =
+            uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
 
         fun put(newContent: String) {
             content = newContent
@@ -54,7 +55,10 @@ class SourcePath {
 
         fun parse() {
             // TODO: Create PsiFile using the stored language instead
-            parsed = clientSession.classPath.compiler.createKtFile(content, path ?: Paths.get("sourceFile.virtual.$extension"))
+            parsed = clientSession.classPath.compiler.createKtFile(
+                content,
+                path ?: Paths.get("sourceFile.virtual.$extension")
+            )
         }
 
         fun parseIfChanged() {
@@ -97,10 +101,18 @@ class SourcePath {
         }
 
         fun prepareCompiledFile(): CompiledFile =
-                parseIfChanged().apply { compileIfNull() }.let { doPrepareCompiledFile() }
+            parseIfChanged().apply { compileIfNull() }.let { doPrepareCompiledFile() }
 
         private fun doPrepareCompiledFile(): CompiledFile =
-                CompiledFile(content, compiledFile!!, compiledContext!!, module!!, allIncludingThis(), clientSession.classPath, false)
+            CompiledFile(
+                content,
+                compiledFile!!,
+                compiledContext!!,
+                module!!,
+                allIncludingThis(),
+                clientSession.classPath,
+                false
+            )
 
         private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
             if (isTemporary) (all().asSequence() + sequenceOf(parsed!!)).toList()
@@ -108,14 +120,18 @@ class SourcePath {
         }
 
         // Creates a shallow copy
-        fun clone(): SourceFile = SourceFile(uri, content, path, parsed, compiledFile, compiledContext, module, language, isTemporary)
+        fun clone(): SourceFile =
+            SourceFile(uri, content, path, parsed, compiledFile, compiledContext, module, language, isTemporary)
     }
 
     private fun sourceFile(uri: URI): SourceFile {
         if (uri !in files) {
             // Fallback solution, usually *all* source files
             // should be added/opened through SourceFiles
-            LOG.warn("Requested source file {} is not on source path, this is most likely a bug. Adding it now temporarily...", describeURI(uri))
+            LOG.warn(
+                "Requested source file {} is not on source path, this is most likely a bug. Adding it now temporarily...",
+                describeURI(uri)
+            )
             put(uri, contentOf(uri), null, temporary = true)
         }
         return files[uri]!!
@@ -164,13 +180,13 @@ class SourcePath {
      * Compile the latest version of a file
      */
     fun currentVersion(uri: URI): CompiledFile =
-            sourceFile(uri).apply { compileIfChanged() }.prepareCompiledFile()
+        sourceFile(uri).apply { compileIfChanged() }.prepareCompiledFile()
 
     /**
      * Return whatever is the most-recent already-compiled version of `file`
      */
     fun latestCompiledVersion(uri: URI): CompiledFile =
-            sourceFile(uri).prepareCompiledFile()
+        sourceFile(uri).prepareCompiledFile()
 
     /**
      * Compile changed files
@@ -323,7 +339,9 @@ class SourcePath {
      * Get parsed trees for all .kt files on source path
      */
     fun all(includeHidden: Boolean = false): Collection<KtFile> =
-            files.values
-                .filter { includeHidden || !it.isTemporary }
-                .map { it.apply { parseIfChanged() }.parsed!! }
+        files.values
+            .asSequence()
+            .filter { includeHidden || !it.isTemporary }
+            .map { it.apply { parseIfChanged() }.parsed!! }
+            .toList()
 }

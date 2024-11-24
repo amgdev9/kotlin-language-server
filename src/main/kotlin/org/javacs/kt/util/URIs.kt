@@ -26,11 +26,6 @@ val URI.fileExtension: String?
         return if (dotOffset < 0) null else str.substring(dotOffset + 1, end)
     }
 
-fun describeURIs(uris: Collection<URI>): String =
-    if (uris.isEmpty()) "0 files"
-    else if (uris.size > 5) "${uris.size} files"
-    else uris.joinToString(", ", transform = ::describeURI)
-
 fun describeURI(uri: String): String = describeURI(parseURI(uri))
 
 fun describeURI(uri: URI): String =

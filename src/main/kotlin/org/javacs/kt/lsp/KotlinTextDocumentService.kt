@@ -215,7 +215,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     }
 
     private fun doLint(cancelCallback: () -> Boolean) {
-        LOG.info("Linting {}", describeURIs(lintTodo))
+        LOG.info("Linting {}", "${lintTodo.size} files")
         val files = clearLint()
         val context = clientSession.sourcePath.compileFiles(files)
         if (!cancelCallback.invoke()) {

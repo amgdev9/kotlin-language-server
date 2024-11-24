@@ -106,7 +106,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
         clientSession.sourceFiles.addWorkspaceRoot(root, projectInfo)
 
-        // This calls gradle and reinstantiates the compiler if classpath has changed
+        // This reinstantiates the compiler if classpath has changed
         val refreshedCompiler = clientSession.classPath.addWorkspaceRoot(root, projectInfo)
         if (refreshedCompiler) {
             // Recompiles all source files, updating the index
