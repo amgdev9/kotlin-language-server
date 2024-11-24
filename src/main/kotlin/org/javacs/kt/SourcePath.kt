@@ -19,14 +19,12 @@ import java.util.concurrent.locks.ReentrantLock
 
 class SourcePath(
     private val classPath: CompilerClassPath,
-    private val contentProvider: URIContentProvider,
-    private val indexingConfig: Configuration.Indexing
+    private val contentProvider: URIContentProvider
 ) {
     private val files = mutableMapOf<URI, SourceFile>()
     private val parseDataWriteLock = ReentrantLock()
 
     private val indexAsync = AsyncExecutor()
-    var indexEnabled: Boolean by indexingConfig::enabled
     val index = SymbolIndex()
 
     var beforeCompileCallback: () -> Unit = {}
@@ -290,8 +288,6 @@ class SourcePath(
      * Refreshes the indexes. If already done, refreshes only the declarations in the files that were changed.
      */
     private fun refreshWorkspaceIndexes(oldFiles: List<SourceFile>, newFiles: List<SourceFile>) = indexAsync.execute {
-        if (!indexEnabled) return@execute
-
         val oldDeclarations = getDeclarationDescriptors(oldFiles)
         val newDeclarations = getDeclarationDescriptors(newFiles)
 
@@ -303,8 +299,6 @@ class SourcePath(
      * Refreshes the indexes. If already done, refreshes only the declarations in the files that were changed.
      */
     private fun refreshDependencyIndexes(module: ModuleDescriptor) = indexAsync.execute {
-        if (!indexEnabled) return@execute
-
         val declarations = getDeclarationDescriptors(files.values)
         index.refresh(module, declarations)
     }

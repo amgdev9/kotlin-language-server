@@ -1,13 +1,10 @@
 package org.javacs.kt
 
-import org.eclipse.lsp4j.DiagnosticSeverity
-
 data class Configuration(
     val codegen: Codegen = Codegen(),
     val compiler: Compiler = Compiler(),
     val completion: Completion = Completion(),
     val diagnostics: Diagnostics = Diagnostics(),
-    val indexing: Indexing = Indexing(),
     val externalSources: ExternalSources = ExternalSources(),
     val inlayHints: InlayHints = InlayHints(),
 ) {
@@ -32,16 +29,8 @@ data class Configuration(
         )
     }
     data class Diagnostics(
-        /** Whether diagnostics are enabled. */
-        var enabled: Boolean = true,
-        /** The minimum severity of enabled diagnostics. */
-        var level: DiagnosticSeverity = DiagnosticSeverity.Hint,
         /** The time interval between subsequent lints in ms. */
         var debounceTime: Long = 250L
-    )
-    data class Indexing(
-        /** Whether an index of global symbols should be built in the background. */
-        var enabled: Boolean = true
     )
     data class ExternalSources(
         /** Whether kls-URIs should be sent to the client to describe classes in JARs. */

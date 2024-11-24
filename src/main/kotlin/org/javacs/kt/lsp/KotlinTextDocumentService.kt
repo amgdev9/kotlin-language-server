@@ -269,7 +269,6 @@ class KotlinTextDocumentService(
     private fun reportDiagnostics(compiled: Collection<URI>, kotlinDiagnostics: Diagnostics) {
         val langServerDiagnostics = kotlinDiagnostics
             .flatMap(::convertDiagnostic)
-            .filter { config.diagnostics.enabled && it.second.severity <= config.diagnostics.level }
         val byFile = langServerDiagnostics.groupBy({ it.first }, { it.second })
 
         for ((uri, diagnostics) in byFile) {

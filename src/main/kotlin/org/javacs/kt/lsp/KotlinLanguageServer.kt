@@ -45,7 +45,7 @@ class KotlinLanguageServer(
         )
     )
 
-    private val sourcePath by lazy { SourcePath(classPath, uriContentProvider, config.indexing) }
+    private val sourcePath by lazy { SourcePath(classPath, uriContentProvider) }
     private val sourceFiles by lazy { SourceFiles(sourcePath, uriContentProvider) }
 
     private val textDocuments by lazy {
