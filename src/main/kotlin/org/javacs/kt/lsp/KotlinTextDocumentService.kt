@@ -10,7 +10,7 @@ import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
 import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
-import org.javacs.kt.URIContentProvider
+import org.javacs.kt.externalsources.URIContentProvider
 import org.javacs.kt.codeaction.codeActions
 import org.javacs.kt.actions.completion.completions
 import org.javacs.kt.actions.goToDefinition

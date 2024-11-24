@@ -6,7 +6,7 @@ import org.eclipse.lsp4j.TextDocumentPositionParams
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment
 import org.javacs.kt.SourcePath
-import org.javacs.kt.URIContentProvider
+import org.javacs.kt.externalsources.URIContentProvider
 import org.javacs.kt.actions.listOverridableMembers
 import org.javacs.kt.actions.offset
 import org.javacs.kt.util.AsyncExecutor

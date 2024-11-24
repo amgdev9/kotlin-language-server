@@ -14,7 +14,7 @@ import org.javacs.kt.LogLevel
 import org.javacs.kt.LogMessage
 import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
-import org.javacs.kt.URIContentProvider
+import org.javacs.kt.externalsources.URIContentProvider
 import org.javacs.kt.externalsources.*
 import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.classpath.getGradleProjectInfo

@@ -1,9 +1,7 @@
-package org.javacs.kt
+package org.javacs.kt.externalsources
 
 import java.net.URI
 import java.nio.file.Paths
-import org.javacs.kt.externalsources.ClassContentProvider
-import org.javacs.kt.externalsources.toKlsURI
 
 /**
  * Fetches the content of Kotlin files identified by a URI.
