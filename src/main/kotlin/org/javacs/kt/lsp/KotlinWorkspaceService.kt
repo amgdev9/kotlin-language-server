@@ -25,11 +25,7 @@ class KotlinWorkspaceService(
     private val textDocService: KotlinTextDocumentService,
     private val config: Configuration
 ) : WorkspaceService, LanguageClientAware {
-    private var languageClient: LanguageClient? = null
-
-    override fun connect(client: LanguageClient) {
-        languageClient = client
-    }
+    override fun connect(client: LanguageClient) {}
 
     override fun didChangeWatchedFiles(params: DidChangeWatchedFilesParams) {
         for (change in params.changes) {

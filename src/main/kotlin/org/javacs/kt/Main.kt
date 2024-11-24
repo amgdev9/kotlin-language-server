@@ -10,7 +10,6 @@ fun main(argv: Array<String>) {
     val server = KotlinLanguageServer()
     val threads = Executors.newSingleThreadExecutor { Thread(it, "client") }
     val launcher = LSPLauncher.createServerLauncher(server, System.`in`, System.out, threads) { it }
-
     server.connect(launcher.remoteProxy)
     launcher.startListening()
 }

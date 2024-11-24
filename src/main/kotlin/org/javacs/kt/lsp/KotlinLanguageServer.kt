@@ -69,16 +69,9 @@ class KotlinLanguageServer(
         const val VERSION = "1.0.0"
     }
 
-    init {
-        LOG.info("Kotlin Language Server: Version $VERSION")
-    }
-
     override fun connect(client: LanguageClient) {
         this.client = client
         connectLoggingBackend()
-
-        workspaces.connect(client)
-        textDocuments.connect(client)
 
         LOG.info("Connected to client")
     }
@@ -90,6 +83,8 @@ class KotlinLanguageServer(
     fun getProtocolExtensionService(): KotlinProtocolExtensions = protocolExtensions
 
     override fun initialize(params: InitializeParams): CompletableFuture<InitializeResult> = async.compute {
+        LOG.info("Kotlin Language Server: Version $VERSION")
+
         val serverCapabilities = ServerCapabilities().apply {
             setTextDocumentSync(TextDocumentSyncKind.Incremental)
             workspace = WorkspaceServerCapabilities()
@@ -140,7 +135,8 @@ class KotlinLanguageServer(
         val root = Paths.get(parseURI(folder.uri))
 
         clientSession = ClientSession(
-            db = setupDB(root)
+            db = setupDB(root),
+            client = client
         )
 
         LOG.info("Adding workspace folder {}", folder.name)

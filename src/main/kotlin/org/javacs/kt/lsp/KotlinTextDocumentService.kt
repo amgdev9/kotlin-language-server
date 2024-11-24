@@ -24,6 +24,7 @@ import org.javacs.kt.actions.renameSymbol
 import org.javacs.kt.actions.documentHighlightsAt
 import org.javacs.kt.actions.provideHints
 import org.javacs.kt.actions.documentSymbols
+import org.javacs.kt.clientSession
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.Debouncer
 import org.javacs.kt.util.TemporaryFolder
@@ -47,7 +48,6 @@ class KotlinTextDocumentService(
     private val uriContentProvider: URIContentProvider,
     private val classPath: CompilerClassPath
 ) : TextDocumentService, Closeable {
-    private lateinit var client: LanguageClient
     private val async = AsyncExecutor()
 
     var debounceLint = Debouncer(Duration.ofMillis(config.diagnostics.debounceTime))
@@ -56,10 +56,6 @@ class KotlinTextDocumentService(
 
     private val TextDocumentIdentifier.filePath: Path?
         get() = parseURI(uri).filePath
-
-    fun connect(client: LanguageClient) {
-        this.client = client
-    }
 
     private enum class Recompile {
         ALWAYS, AFTER_DOT, NEVER
@@ -273,7 +269,7 @@ class KotlinTextDocumentService(
 
         for ((uri, diagnostics) in byFile) {
             if (sourceFiles.isOpen(uri)) {
-                client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), diagnostics))
+                clientSession.client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), diagnostics))
 
                 LOG.info("Reported {} diagnostics in {}", diagnostics.size, describeURI(uri))
             }
@@ -291,7 +287,7 @@ class KotlinTextDocumentService(
     }
 
     private fun clearDiagnostics(uri: URI) {
-        client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), listOf()))
+        clientSession.client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), listOf()))
     }
 
     override fun close() {

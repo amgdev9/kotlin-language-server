@@ -1,4 +1,3 @@
-- Ver como gestionar el ciclo de vida de los objetos
 - Eliminar ProgressFactory
 - Implementar cacheo del classpath
 - Optimizar indexado
