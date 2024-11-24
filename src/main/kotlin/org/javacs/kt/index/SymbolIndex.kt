@@ -1,7 +1,6 @@
 package org.javacs.kt.index
 
 import org.javacs.kt.LOG
-import org.javacs.kt.LanguageClientProgress
 import org.javacs.kt.clientSession
 import org.javacs.kt.db.MAX_FQNAME_LENGTH
 import org.javacs.kt.db.MAX_SHORT_NAME_LENGTH
@@ -20,29 +19,23 @@ import kotlin.sequences.Sequence
  * A global view of all available symbols across all packages.
  */
 class SymbolIndex {
-    var progressFactory: LanguageClientProgress.Factory? = null
-
     /** Rebuilds the entire index. May take a while. */
     fun refresh(module: ModuleDescriptor, exclusions: Sequence<DeclarationDescriptor>) {
         LOG.info("Updating full symbol index...")
 
-        progressFactory?.create("Indexing")?.thenApplyAsync { progress ->
-            try {
-                transaction(clientSession.db) {
-                    // Remove everything first.
-                    Symbols.deleteAll()
-                    // Add new ones.
-                    addDeclarations(allDescriptors(module, exclusions))
+        try {
+            transaction(clientSession.db) {
+                // Remove everything first.
+                Symbols.deleteAll()
+                // Add new ones.
+                addDeclarations(allDescriptors(module, exclusions))
 
-                    val count = Symbols.slice(Symbols.fqName.count()).selectAll().first()[Symbols.fqName.count()]
-                    LOG.info("Updated full symbol index! (${count} symbol(s))")
-                }
-            } catch (e: Exception) {
-                LOG.error("Error while updating symbol index")
-                LOG.printStackTrace(e)
+                val count = Symbols.slice(Symbols.fqName.count()).selectAll().first()[Symbols.fqName.count()]
+                LOG.info("Updated full symbol index! (${count} symbol(s))")
             }
-
-            progress.close()
+        } catch (e: Exception) {
+            LOG.error("Error while updating symbol index")
+            LOG.printStackTrace(e)
         }
     }
 

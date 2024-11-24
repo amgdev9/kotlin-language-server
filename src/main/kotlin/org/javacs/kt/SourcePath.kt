@@ -29,12 +29,6 @@ class SourcePath(
 
     var beforeCompileCallback: () -> Unit = {}
 
-    var progressFactory: LanguageClientProgress.Factory? = null
-        set(factory) {
-            field = factory
-            index.progressFactory = factory
-        }
-
     private inner class SourceFile(
         val uri: URI,
         var content: String,

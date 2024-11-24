@@ -16,7 +16,6 @@ import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
 import org.javacs.kt.URIContentProvider
 import org.javacs.kt.externalsources.*
-import org.javacs.kt.LanguageClientProgress
 import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.classpath.getGradleProjectInfo
 import org.javacs.kt.clientSession
@@ -59,11 +58,6 @@ class KotlinLanguageServer(
     private lateinit var client: LanguageClient
 
     private val async = AsyncExecutor()
-    private var progressFactory: LanguageClientProgress.Factory? = null
-        set(factory) {
-            field = factory
-            sourcePath.progressFactory = factory
-        }
 
     companion object {
         const val VERSION = "1.0.0"
@@ -114,15 +108,9 @@ class KotlinLanguageServer(
         config.completion.snippets.enabled =
             clientCapabilities?.textDocument?.completion?.completionItem?.snippetSupport == true
 
-        if (clientCapabilities?.window?.workDoneProgress == true) {
-            progressFactory = LanguageClientProgress.Factory(client)
-        }
-
         if (clientCapabilities?.textDocument?.rename?.prepareSupport == true) {
             serverCapabilities.renameProvider = Either.forRight(RenameOptions(false))
         }
-
-        val progress = params.workDoneToken?.let { LanguageClientProgress("Workspace folders", it, client) }
 
         val folders = params.workspaceFolders
         if(folders.isEmpty()) {
@@ -141,24 +129,17 @@ class KotlinLanguageServer(
 
         LOG.info("Adding workspace folder {}", folder.name)
 
-        progress?.update("Updating source path", 25)
-
         val projectInfo = getGradleProjectInfo(root)
 
         sourceFiles.addWorkspaceRoot(root, projectInfo)
 
-        progress?.update("Updating class path", 50)
-
         // This calls gradle and reinstantiates the compiler if classpath has changed
         val refreshedCompiler = classPath.addWorkspaceRoot(root, projectInfo)
         if (refreshedCompiler) {
-            progress?.update("Refreshing source path", 75)
-
             // Recompiles all source files, updating the index
             // TODO Is this needed?
             sourcePath.refresh()
         }
-        progress?.close()
 
         // This compiles all the files twice and updates the index twice
         // TODO Optimize this mess

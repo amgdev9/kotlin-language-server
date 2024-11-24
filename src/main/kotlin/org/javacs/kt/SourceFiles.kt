@@ -216,6 +216,6 @@ private fun isSource(uri: URI): Boolean = languageOf(uri) != null
 
 private fun languageOf(uri: URI): Language? {
     val fileName = uri.filePath?.fileName?.toString() ?: return null
-    if (fileName.endsWith(".kt") || fileName.endsWith(".kts")) return KotlinLanguage.INSTANCE
+    if (fileName.endsWith(".kt")) return KotlinLanguage.INSTANCE
     return null
 }
