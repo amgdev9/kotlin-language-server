@@ -15,14 +15,10 @@ import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
-class KotlinTextDocumentService(
-    private val sourceFiles: SourceFiles,
-    private val sourcePath: SourcePath,
-    private val config: Configuration,
-) : TextDocumentService, Closeable {
+class KotlinTextDocumentService: TextDocumentService, Closeable {
     private val async = AsyncExecutor()
 
-    var debounceLint = Debouncer(Duration.ofMillis(config.diagnostics.debounceTime))
+    var debounceLint = Debouncer(Duration.ofMillis(250L))
     val lintTodo = mutableSetOf<URI>()
     var lintCount = 0
 
@@ -39,14 +35,14 @@ class KotlinTextDocumentService(
 
     private fun recover(uriString: String, position: Position, recompile: Recompile): Pair<CompiledFile, Int>? {
         val uri = parseURI(uriString)
-        val content = sourcePath.content(uri)
+        val content = clientSession.sourcePath.content(uri)
         val offset = offset(content, position.line, position.character)
         val shouldRecompile = when (recompile) {
             Recompile.ALWAYS -> true
             Recompile.AFTER_DOT -> offset > 0 && content[offset - 1] == '.'
             Recompile.NEVER -> false
         }
-        val compiled = if (shouldRecompile) sourcePath.currentVersion(uri) else sourcePath.latestCompiledVersion(uri)
+        val compiled = if (shouldRecompile) clientSession.sourcePath.currentVersion(uri) else clientSession.sourcePath.latestCompiledVersion(uri)
         return Pair(compiled, offset)
     }
 
@@ -57,7 +53,7 @@ class KotlinTextDocumentService(
 
     override fun inlayHint(params: InlayHintParams): CompletableFuture<List<InlayHint>> = async.compute {
         val (file, _) = recover(params.textDocument.uri, params.range.start, Recompile.ALWAYS) ?: return@compute emptyList()
-        provideHints(file, config.inlayHints)
+        provideHints(file, clientSession.config.inlayHints)
     }
 
     override fun hover(position: HoverParams): CompletableFuture<Hover?> = async.compute {
@@ -79,7 +75,7 @@ class KotlinTextDocumentService(
         goToDefinition(
             file,
             cursor,
-            config.externalSources,
+            clientSession.config.externalSources,
             clientSession.classPath
         )
             ?.let(::listOf)
@@ -93,7 +89,7 @@ class KotlinTextDocumentService(
 
     override fun rename(params: RenameParams) = async.compute {
         val (file, cursor) = recover(params) ?: return@compute null
-        renameSymbol(file, cursor, sourcePath, params.newName)
+        renameSymbol(file, cursor, clientSession.sourcePath, params.newName)
     }
 
     override fun completion(position: CompletionParams): CompletableFuture<Either<List<CompletionItem>, CompletionList>> = async.compute {
@@ -101,7 +97,7 @@ class KotlinTextDocumentService(
 
         val (file, cursor) = recover(position)
             ?: return@compute Either.forRight(CompletionList()) // TODO: Investigate when to recompile
-        val completions = completions(file, cursor, config.completion)
+        val completions = completions(file, cursor, clientSession.config.completion)
         LOG.info("Found {} items", completions.items.size)
 
         Either.forRight(completions)
@@ -115,14 +111,14 @@ class KotlinTextDocumentService(
         LOG.info("Find symbols in {}", describeURI(params.textDocument.uri))
 
         val uri = parseURI(params.textDocument.uri)
-        val parsed = sourcePath.parsedFile(uri)
+        val parsed = clientSession.sourcePath.parsedFile(uri)
 
         documentSymbols(parsed)
     }
 
     override fun didOpen(params: DidOpenTextDocumentParams) {
         val uri = parseURI(params.textDocument.uri)
-        sourceFiles.open(uri, params.textDocument.text, params.textDocument.version)
+        clientSession.sourceFiles.open(uri, params.textDocument.text, params.textDocument.version)
         lintNow(uri)
     }
 
@@ -131,7 +127,7 @@ class KotlinTextDocumentService(
         val uri = parseURI(params.textDocument.uri)
         lintNow(uri)
         debounceLint.schedule {
-            sourcePath.save(uri)
+            clientSession.sourcePath.save(uri)
         }
     }
 
@@ -144,22 +140,22 @@ class KotlinTextDocumentService(
 
     override fun didClose(params: DidCloseTextDocumentParams) {
         val uri = parseURI(params.textDocument.uri)
-        sourceFiles.close(uri)
+        clientSession.sourceFiles.close(uri)
         clearDiagnostics(uri)
     }
 
     override fun didChange(params: DidChangeTextDocumentParams) {
         val uri = parseURI(params.textDocument.uri)
-        sourceFiles.edit(uri, params.textDocument.version, params.contentChanges)
+        clientSession.sourceFiles.edit(uri, params.textDocument.version, params.contentChanges)
         lintLater(uri)
     }
 
     override fun references(position: ReferenceParams) = async.compute {
         position.textDocument.filePath
             ?.let { file ->
-                val content = sourcePath.content(parseURI(position.textDocument.uri))
+                val content = clientSession.sourcePath.content(parseURI(position.textDocument.uri))
                 val offset = offset(content, position.position.line, position.position.character)
-                findReferences(file, offset, sourcePath)
+                findReferences(file, offset, clientSession.sourcePath)
             }
     }
 
@@ -167,7 +163,7 @@ class KotlinTextDocumentService(
         LOG.info("Full semantic tokens in {}", describeURI(params.textDocument.uri))
 
         val uri = parseURI(params.textDocument.uri)
-        val file = sourcePath.currentVersion(uri)
+        val file = clientSession.sourcePath.currentVersion(uri)
 
         val tokens = encodedSemanticTokens(file)
 
@@ -178,7 +174,7 @@ class KotlinTextDocumentService(
         LOG.info("Ranged semantic tokens in {}", describeURI(params.textDocument.uri))
 
         val uri = parseURI(params.textDocument.uri)
-        val file = sourcePath.currentVersion(uri)
+        val file = clientSession.sourcePath.currentVersion(uri)
 
         val tokens = encodedSemanticTokens(file, params.range)
         LOG.info("Found {} tokens", tokens.size)
@@ -194,15 +190,11 @@ class KotlinTextDocumentService(
         return "${describeURI(position.textDocument.uri)} ${position.position.line + 1}:${position.position.character + 1}"
     }
 
-    fun updateDebouncer() {
-        debounceLint = Debouncer(Duration.ofMillis(config.diagnostics.debounceTime))
-    }
-
     fun lintAll() {
         debounceLint.submitImmediately {
-            sourcePath.compileAllFiles()
-            sourcePath.saveAllFiles()
-            sourcePath.refreshDependencyIndexes()
+            clientSession.sourcePath.compileAllFiles()
+            clientSession.sourcePath.saveAllFiles()
+            clientSession.sourcePath.refreshDependencyIndexes()
         }
     }
 
@@ -225,7 +217,7 @@ class KotlinTextDocumentService(
     private fun doLint(cancelCallback: () -> Boolean) {
         LOG.info("Linting {}", describeURIs(lintTodo))
         val files = clearLint()
-        val context = sourcePath.compileFiles(files)
+        val context = clientSession.sourcePath.compileFiles(files)
         if (!cancelCallback.invoke()) {
             reportDiagnostics(files, context.diagnostics)
         }
@@ -238,7 +230,7 @@ class KotlinTextDocumentService(
         val byFile = langServerDiagnostics.groupBy({ it.first }, { it.second })
 
         for ((uri, diagnostics) in byFile) {
-            if (sourceFiles.isOpen(uri)) {
+            if (clientSession.sourceFiles.isOpen(uri)) {
                 clientSession.client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), diagnostics))
 
                 LOG.info("Reported {} diagnostics in {}", diagnostics.size, describeURI(uri))

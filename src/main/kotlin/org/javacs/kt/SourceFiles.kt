@@ -21,7 +21,7 @@ private class SourceVersion(val content: String, val version: Int, val language:
 /**
  * Notify SourcePath whenever a file changes
  */
-private class NotifySourcePath(private val sourcePath: SourcePath) {
+private class NotifySourcePath() {
     private val files = mutableMapOf<URI, SourceVersion>()
 
     operator fun get(uri: URI): SourceVersion? = files[uri]
@@ -30,16 +30,16 @@ private class NotifySourcePath(private val sourcePath: SourcePath) {
         val content = convertLineSeparators(source.content)
 
         files[uri] = source
-        sourcePath.put(uri, content, source.language, source.isTemporary)
+        clientSession.sourcePath.put(uri, content, source.language, source.isTemporary)
     }
 
     fun remove(uri: URI) {
         files.remove(uri)
-        sourcePath.delete(uri)
+        clientSession.sourcePath.delete(uri)
     }
 
     fun removeIfTemporary(uri: URI): Boolean =
-        if (sourcePath.deleteIfTemporary(uri)) {
+        if (clientSession.sourcePath.deleteIfTemporary(uri)) {
             files.remove(uri)
             true
         } else {
@@ -49,7 +49,7 @@ private class NotifySourcePath(private val sourcePath: SourcePath) {
     fun removeAll(rm: Collection<URI>) {
         files -= rm
 
-        rm.forEach(sourcePath::delete)
+        rm.forEach(clientSession.sourcePath::delete)
     }
 
     val keys get() = files.keys
@@ -58,11 +58,9 @@ private class NotifySourcePath(private val sourcePath: SourcePath) {
 /**
  * Keep track of the text of all files in the workspace
  */
-class SourceFiles(
-    sourcePath: SourcePath
-) {
+class SourceFiles {
     private var workspaceRoot: Path? = null
-    private val files = NotifySourcePath(sourcePath)
+    private val files = NotifySourcePath()
     private val openFiles = mutableSetOf<URI>()
 
     fun open(uri: URI, content: String, version: Int) {

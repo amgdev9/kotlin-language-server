@@ -13,7 +13,10 @@ data class ClientSession(
     val client: LanguageClient,
     val classPath: CompilerClassPath,
     val tempFolder: TemporaryFolder,
-    val decompilerOutputDir: Path
+    val decompilerOutputDir: Path,
+    val sourcePath: SourcePath,
+    val sourceFiles: SourceFiles,
+    val config: Configuration
 )
 
 var clientSession: ClientSession

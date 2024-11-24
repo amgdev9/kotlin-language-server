@@ -4,7 +4,6 @@ data class Configuration(
     val codegen: Codegen = Codegen(),
     val compiler: Compiler = Compiler(),
     val completion: Completion = Completion(),
-    val diagnostics: Diagnostics = Diagnostics(),
     val externalSources: ExternalSources = ExternalSources(),
     val inlayHints: InlayHints = InlayHints(),
 ) {
@@ -28,10 +27,6 @@ data class Configuration(
             var enabled: Boolean = true
         )
     }
-    data class Diagnostics(
-        /** The time interval between subsequent lints in ms. */
-        var debounceTime: Long = 250L
-    )
     data class ExternalSources(
         /** Whether kls-URIs should be sent to the client to describe classes in JARs. */
         var useKlsScheme: Boolean = false

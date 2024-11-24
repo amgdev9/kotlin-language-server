@@ -20,17 +20,10 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletableFuture.completedFuture
 import kotlin.system.exitProcess
 
-class KotlinLanguageServer(
-    val config: Configuration = Configuration()
-) : LanguageServer, LanguageClientAware, Closeable {
-    private val sourcePath by lazy { SourcePath() }
-    private val sourceFiles by lazy { SourceFiles(sourcePath) }
-
-    private val textDocuments by lazy {
-        KotlinTextDocumentService(sourceFiles, sourcePath, config)
-    }
-    private val workspaces by lazy { KotlinWorkspaceService(sourceFiles, sourcePath, textDocuments, config) }
-    private val protocolExtensions by lazy { KotlinProtocolExtensionService(sourcePath) }
+class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
+    private val textDocuments = KotlinTextDocumentService()
+    private val workspaces = KotlinWorkspaceService()
+    private val protocolExtensions = KotlinProtocolExtensionService()
 
     private lateinit var client: LanguageClient
 
@@ -77,6 +70,7 @@ class KotlinLanguageServer(
         }
  
         val clientCapabilities = params.capabilities
+        val config = Configuration()
         config.completion.snippets.enabled =
             clientCapabilities?.textDocument?.completion?.completionItem?.snippetSupport == true
 
@@ -96,7 +90,10 @@ class KotlinLanguageServer(
             client = client,
             classPath = CompilerClassPath(config.compiler, config.codegen),
             tempFolder = TemporaryFolder(),
-            decompilerOutputDir = createDecompilerOutputDirectory()
+            decompilerOutputDir = createDecompilerOutputDirectory(),
+            sourcePath = SourcePath(),
+            sourceFiles = SourceFiles(),
+            config = config
         )
 
         if (folders.size > 1) {
@@ -107,14 +104,14 @@ class KotlinLanguageServer(
 
         val projectInfo = getGradleProjectInfo(root)
 
-        sourceFiles.addWorkspaceRoot(root, projectInfo)
+        clientSession.sourceFiles.addWorkspaceRoot(root, projectInfo)
 
         // This calls gradle and reinstantiates the compiler if classpath has changed
         val refreshedCompiler = clientSession.classPath.addWorkspaceRoot(root, projectInfo)
         if (refreshedCompiler) {
             // Recompiles all source files, updating the index
             // TODO Is this needed?
-            sourcePath.refresh()
+            clientSession.sourcePath.refresh()
         }
 
         // This compiles all the files twice and updates the index twice
