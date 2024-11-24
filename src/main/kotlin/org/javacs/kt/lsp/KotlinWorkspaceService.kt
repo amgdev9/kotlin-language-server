@@ -16,6 +16,7 @@ import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
 import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
+import org.javacs.kt.classpath.getGradleProjectInfo
 
 class KotlinWorkspaceService(
     private val sourceFiles: SourceFiles,
@@ -168,9 +169,10 @@ class KotlinWorkspaceService(
             LOG.info("Adding workspace {} to source path", change.uri)
 
             val root = Paths.get(parseURI(change.uri))
+            val projectInfo = getGradleProjectInfo(root)
 
-            sourceFiles.addWorkspaceRoot(root)
-            val refreshed = classPath.addWorkspaceRoot(root)
+            sourceFiles.addWorkspaceRoot(root, projectInfo)
+            val refreshed = classPath.addWorkspaceRoot(root, projectInfo)
             if (refreshed) {
                 sourcePath.refresh()
             }

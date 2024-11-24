@@ -17,6 +17,7 @@ import org.javacs.kt.URIContentProvider
 import org.javacs.kt.externalsources.*
 import org.javacs.kt.LanguageClientProgress
 import org.javacs.kt.actions.semanticTokensLegend
+import org.javacs.kt.classpath.getGradleProjectInfo
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
@@ -87,13 +88,13 @@ class KotlinLanguageServer(
     fun getProtocolExtensionService(): KotlinProtocolExtensions = protocolExtensions
 
     override fun initialize(params: InitializeParams): CompletableFuture<InitializeResult> = async.compute {
-        val serverCapabilities = ServerCapabilities()
-        with(serverCapabilities) {
+        val serverCapabilities = ServerCapabilities().apply {
             setTextDocumentSync(TextDocumentSyncKind.Incremental)
             workspace = WorkspaceServerCapabilities()
-            workspace.workspaceFolders = WorkspaceFoldersOptions()
-            workspace.workspaceFolders.supported = true
-            workspace.workspaceFolders.changeNotifications = Either.forRight(true)
+            workspace.workspaceFolders = WorkspaceFoldersOptions().apply {
+                supported = true
+                changeNotifications = Either.forRight(true)
+            }
             inlayHintProvider = Either.forLeft(true)
             hoverProvider = Either.forLeft(true)
             renameProvider = Either.forLeft(true)
@@ -143,12 +144,14 @@ class KotlinLanguageServer(
 
         progress?.update("Updating source path", 25)
 
-        sourceFiles.addWorkspaceRoot(root)
+        val projectInfo = getGradleProjectInfo(root)
+
+        sourceFiles.addWorkspaceRoot(root, projectInfo)
 
         progress?.update("Updating class path", 50)
 
         // This calls gradle and reinstantiates the compiler if classpath has changed
-        val refreshedCompiler = classPath.addWorkspaceRoot(root)
+        val refreshedCompiler = classPath.addWorkspaceRoot(root, projectInfo)
         if (refreshedCompiler) {
             progress?.update("Refreshing source path", 75)
 

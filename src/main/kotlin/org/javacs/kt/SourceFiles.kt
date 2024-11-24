@@ -4,6 +4,7 @@ import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import com.intellij.lang.Language
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
+import org.javacs.kt.classpath.GradleProjectInfo
 import org.javacs.kt.classpath.getGradleProjectInfo
 import org.javacs.kt.util.filePath
 import org.javacs.kt.util.describeURIs
@@ -143,15 +144,13 @@ class SourceFiles(
         return null
     }
 
-    fun addWorkspaceRoot(root: Path) {
-        val projectInfo = getGradleProjectInfo(root)
-
+    fun addWorkspaceRoot(root: Path, projectInfo: GradleProjectInfo) {
         LOG.info("Searching $root...")
         val addSources = findKotlinSourceFiles(projectInfo.kotlinSourceDirs)
 
         LOG.info("Adding {} under {} to source path", describeURIs(addSources), root)
 
-        // Load all kotlin files into RAM 
+        // Load all kotlin files into RAM
         for (uri in addSources) {
             val sourceVersion = readFromDisk(uri, temporary = false)
             if (sourceVersion == null) {

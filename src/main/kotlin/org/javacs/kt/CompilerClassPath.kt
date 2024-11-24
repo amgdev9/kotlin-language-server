@@ -1,14 +1,9 @@
 package org.javacs.kt
 
-import org.javacs.kt.classpath.ClassPathEntry
-import org.javacs.kt.classpath.createCachedResolverTables
-import org.javacs.kt.classpath.getClasspathOrEmpty
-import org.javacs.kt.classpath.getClasspathWithSources
-import org.javacs.kt.classpath.getGradleProjectInfo
+import org.javacs.kt.classpath.*
 import org.javacs.kt.util.AsyncExecutor
 import java.io.Closeable
 import java.io.File
-import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
@@ -48,7 +43,7 @@ class CompilerClassPath(
         updateClassPath: Boolean = true,
         updateJavaSourcePath: Boolean = true
     ): Boolean {
-        // TODO: Fetch class path and build script class path concurrently (and asynchronously)
+        // TODO: Fetch class path concurrently (and asynchronously)
         val workspaceRoot = this.workspaceRoot
         if(workspaceRoot == null) {
             throw RuntimeException("Workspace root not set")
@@ -61,7 +56,7 @@ class CompilerClassPath(
             val newClassPath = getClasspathOrEmpty(workspaceRoot)
             if (newClassPath.classPath != classPath) {
                 synchronized(classPath) {
-                    syncPaths(classPath, newClassPath.classPath, "class path") { it.compiledJar }
+                    syncPaths(classPath, newClassPath.classPath, "class path")
                 }
                 refreshCompiler = true
             }
@@ -69,7 +64,7 @@ class CompilerClassPath(
             async.compute {
                 val newClassPathWithSources = getClasspathWithSources(workspaceRoot)
                 synchronized(classPath) {
-                    syncPaths(classPath, newClassPathWithSources.classPath, "class path with sources") { it.compiledJar }
+                    syncPaths(classPath, newClassPathWithSources.classPath, "class path with sources")
                 }
             }
         }
@@ -90,12 +85,12 @@ class CompilerClassPath(
     }
 
     /** Synchronizes the given two path sets and logs the differences. */
-    private fun <T> syncPaths(dest: MutableSet<T>, new: Set<T>, name: String, toPath: (T) -> Path) {
+    private fun <T> syncPaths(dest: MutableSet<T>, new: Set<T>, name: String) {
         val added = new - dest
         val removed = dest - new
 
-        logAdded(added.map(toPath), name)
-        logRemoved(removed.map(toPath), name)
+        LOG.info("Adding {} files to {}", added.size, name)
+        LOG.info("Removing {} files from {}", removed.size, name)
 
         dest.removeAll(removed)
         dest.addAll(added)
@@ -105,12 +100,10 @@ class CompilerClassPath(
         compiler.updateConfiguration(config)
     }
 
-    fun addWorkspaceRoot(root: Path): Boolean {
+    fun addWorkspaceRoot(root: Path, projectInfo: GradleProjectInfo): Boolean {
         if(workspaceRoot != null) {
             throw RuntimeException("Workspace root was set")
         }
-
-        val projectInfo = getGradleProjectInfo(root)
 
         LOG.info("Searching for dependencies and Java sources in workspace root {}", root)
 
@@ -170,21 +163,5 @@ class CompilerClassPath(
     override fun close() {
         compiler.close()
         outputDirectory.delete()
-    }
-}
-
-private fun logAdded(sources: Collection<Path>, name: String) {
-    when {
-        sources.isEmpty() -> return
-        sources.size > 5 -> LOG.info("Adding {} files to {}", sources.size, name)
-        else -> LOG.info("Adding {} to {}", sources, name)
-    }
-}
-
-private fun logRemoved(sources: Collection<Path>, name: String) {
-    when {
-        sources.isEmpty() -> return
-        sources.size > 5 -> LOG.info("Removing {} files from {}", sources.size, name)
-        else -> LOG.info("Removing {} from {}", sources, name)
     }
 }
