@@ -4,9 +4,10 @@ import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.fileExtension
 import org.javacs.kt.util.filePath
 import org.javacs.kt.util.describeURI
-import org.javacs.kt.index.SymbolIndex
 import com.intellij.lang.Language
 import org.javacs.kt.externalsources.contentOf
+import org.javacs.kt.index.refreshIndex
+import org.javacs.kt.index.updateIndexes
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
@@ -23,7 +24,6 @@ class SourcePath {
     private val parseDataWriteLock = ReentrantLock()
 
     private val indexAsync = AsyncExecutor()
-    val index = SymbolIndex()
 
     var beforeCompileCallback: () -> Unit = {}
 
@@ -282,7 +282,7 @@ class SourcePath {
         val newDeclarations = getDeclarationDescriptors(newFiles)
 
         // Index the new declarations in the Kotlin source files that were just compiled, removing the old ones
-        index.updateIndexes(oldDeclarations, newDeclarations)
+        updateIndexes(oldDeclarations, newDeclarations)
     }
 
     /**
@@ -290,7 +290,7 @@ class SourcePath {
      */
     private fun refreshDependencyIndexes(module: ModuleDescriptor) = indexAsync.execute {
         val declarations = getDeclarationDescriptors(files.values)
-        index.refresh(module, declarations)
+        refreshIndex(module, declarations)
     }
 
     // Gets all the declaration descriptors for the collection of files

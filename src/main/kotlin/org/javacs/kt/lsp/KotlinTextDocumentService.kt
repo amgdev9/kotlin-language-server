@@ -52,7 +52,7 @@ class KotlinTextDocumentService(
 
     override fun codeAction(params: CodeActionParams): CompletableFuture<List<Either<Command, CodeAction>>> = async.compute {
         val (file, _) = recover(params.textDocument.uri, params.range.start, Recompile.NEVER) ?: return@compute emptyList()
-        codeActions(file, sourcePath.index, params.range, params.context)
+        codeActions(file, params.range, params.context)
     }
 
     override fun inlayHint(params: InlayHintParams): CompletableFuture<List<InlayHint>> = async.compute {
@@ -101,7 +101,7 @@ class KotlinTextDocumentService(
 
         val (file, cursor) = recover(position)
             ?: return@compute Either.forRight(CompletionList()) // TODO: Investigate when to recompile
-        val completions = completions(file, cursor, sourcePath.index, config.completion)
+        val completions = completions(file, cursor, config.completion)
         LOG.info("Found {} items", completions.items.size)
 
         Either.forRight(completions)

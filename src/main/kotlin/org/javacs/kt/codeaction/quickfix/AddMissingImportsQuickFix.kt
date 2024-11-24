@@ -4,14 +4,14 @@ import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.jetbrains.kotlin.psi.KtFile
 import org.javacs.kt.CompiledFile
-import org.javacs.kt.index.SymbolIndex
 import org.javacs.kt.index.Symbol
 import org.javacs.kt.actions.offset
 import org.javacs.kt.util.toPath
 import org.javacs.kt.actions.getImportTextEditEntry
+import org.javacs.kt.index.queryIndex
 
 class AddMissingImportsQuickFix: QuickFix {
-    override fun compute(file: CompiledFile, index: SymbolIndex, range: Range, diagnostics: List<Diagnostic>): List<Either<Command, CodeAction>> {
+    override fun compute(file: CompiledFile, range: Range, diagnostics: List<Diagnostic>): List<Either<Command, CodeAction>> {
         val uri = file.parse.toPath().toUri().toString()
         val unresolvedReferences = getUnresolvedReferencesFromDiagnostics(diagnostics) 
         
@@ -21,7 +21,7 @@ class AddMissingImportsQuickFix: QuickFix {
             val endCursor = offset(file.content, diagnosticRange.end)
             val symbolName = file.content.substring(startCursor, endCursor)
 
-            getImportAlternatives(symbolName, file.parse, index).map { (importStr, edit) ->
+            getImportAlternatives(symbolName, file.parse).map { (importStr, edit) ->
                 val codeAction = CodeAction()
                 codeAction.title = "Import $importStr"
                 codeAction.kind = CodeActionKind.QuickFix
@@ -38,9 +38,9 @@ class AddMissingImportsQuickFix: QuickFix {
             "UNRESOLVED_REFERENCE" == it.code.left.trim()
         }
 
-    private fun getImportAlternatives(symbolName: String, file: KtFile, index: SymbolIndex): List<Pair<String, TextEdit>> {
+    private fun getImportAlternatives(symbolName: String, file: KtFile): List<Pair<String, TextEdit>> {
         // wildcard matcher to empty string, because we only want to match exactly the symbol itself, not anything extra
-        val queryResult = index.query(symbolName, suffix = "")
+        val queryResult = queryIndex(symbolName, suffix = "")
         
         return queryResult
             .filter {

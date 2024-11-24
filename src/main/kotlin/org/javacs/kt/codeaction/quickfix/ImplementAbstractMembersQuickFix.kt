@@ -3,7 +3,6 @@ package org.javacs.kt.codeaction.quickfix
 import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.javacs.kt.CompiledFile
-import org.javacs.kt.index.SymbolIndex
 import org.javacs.kt.actions.offset
 import org.javacs.kt.util.toPath
 import org.javacs.kt.actions.createFunctionStub
@@ -23,7 +22,7 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
 
 class ImplementAbstractMembersQuickFix : QuickFix {
-    override fun compute(file: CompiledFile, index: SymbolIndex, range: Range, diagnostics: List<Diagnostic>): List<Either<Command, CodeAction>> {
+    override fun compute(file: CompiledFile, range: Range, diagnostics: List<Diagnostic>): List<Either<Command, CodeAction>> {
         val diagnostic = findDiagnosticMatch(diagnostics, range)
 
         val startCursor = offset(file.content, range.start)

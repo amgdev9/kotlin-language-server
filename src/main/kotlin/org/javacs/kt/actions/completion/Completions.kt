@@ -10,7 +10,7 @@ import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
 import org.javacs.kt.actions.getImportTextEditEntry
 import org.javacs.kt.index.Symbol
-import org.javacs.kt.index.SymbolIndex
+import org.javacs.kt.index.queryIndex
 import org.javacs.kt.util.containsCharactersInOrder
 import org.javacs.kt.util.findParent
 import org.javacs.kt.util.noResult
@@ -53,7 +53,7 @@ private const val MAX_COMPLETION_ITEMS = 75
 private const val MIN_SORT_LENGTH = 3
 
 /** Finds completions at the specified position. */
-fun completions(file: CompiledFile, cursor: Int, index: SymbolIndex, config: Configuration.Completion): CompletionList {
+fun completions(file: CompiledFile, cursor: Int, config: Configuration.Completion): CompletionList {
     val partial = findPartialIdentifier(file, cursor)
     LOG.debug("Looking for completions that match '{}'", partial)
 
@@ -67,7 +67,7 @@ fun completions(file: CompiledFile, cursor: Int, index: SymbolIndex, config: Con
 
     val items = (
         elementItemList.asSequence()
-        + (if (!isExhaustive) indexCompletionItems(file, cursor, element, index, partial).filter { it.label !in elementItemLabels } else emptySequence())
+        + (if (!isExhaustive) indexCompletionItems(file, cursor, element, partial).filter { it.label !in elementItemLabels } else emptySequence())
         + (if (elementItemList.isEmpty()) keywordCompletionItems(partial) else emptySequence())
     )
     val itemList = items
@@ -85,7 +85,7 @@ private fun getQueryNameFromExpression(receiver: KtExpression?, cursor: Int, fil
 }
 
 /** Finds completions in the global symbol index, for potentially unimported symbols. */
-private fun indexCompletionItems(file: CompiledFile, cursor: Int, element: KtElement?, index: SymbolIndex, partial: String): Sequence<CompletionItem> {
+private fun indexCompletionItems(file: CompiledFile, cursor: Int, element: KtElement?, partial: String): Sequence<CompletionItem> {
     val parsedFile = file.parse
     val imports = parsedFile.importDirectives
     // TODO: Deal with alias imports
@@ -112,8 +112,7 @@ private fun indexCompletionItems(file: CompiledFile, cursor: Int, element: KtEle
         else -> null
     }
 
-    return index
-        .query(partial, queryName, limit = MAX_COMPLETION_ITEMS)
+    return queryIndex(partial, queryName, limit = MAX_COMPLETION_ITEMS)
         .asSequence()
         .filter { it.kind != Symbol.Kind.MODULE } // Ignore global module/package name completions for now, since they cannot be 'imported'
         .filter { it.fqName.shortName() !in importedNames && it.fqName.parent() !in wildcardPackages }
