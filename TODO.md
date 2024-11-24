@@ -1,3 +1,3 @@
-- Eliminar ProgressFactory
+- Quitar dependencias usando el ClientSession
 - Implementar cacheo del classpath
 - Optimizar indexado

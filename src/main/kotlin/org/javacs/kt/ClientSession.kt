@@ -6,7 +6,7 @@ import org.jetbrains.exposed.sql.Database
 // For now the LSP handles 1 client at a time
 private var CLIENT_SESSION: ClientSession? = null
 
-data class ClientSession(val db: Database, val client: LanguageClient)
+data class ClientSession(val db: Database, val client: LanguageClient, val classPath: CompilerClassPath)
 
 var clientSession: ClientSession
     get() = CLIENT_SESSION ?: throw RuntimeException("Client not connected!")

@@ -45,8 +45,7 @@ class KotlinTextDocumentService(
     private val sourcePath: SourcePath,
     private val config: Configuration,
     private val tempDirectory: TemporaryFolder,
-    private val uriContentProvider: URIContentProvider,
-    private val classPath: CompilerClassPath
+    private val uriContentProvider: URIContentProvider
 ) : TextDocumentService, Closeable {
     private val async = AsyncExecutor()
 
@@ -61,8 +60,8 @@ class KotlinTextDocumentService(
         ALWAYS, AFTER_DOT, NEVER
     }
 
-    private fun recover(position: TextDocumentPositionParams, recompile: Recompile): Pair<CompiledFile, Int>? {
-        return recover(position.textDocument.uri, position.position, recompile)
+    private fun recover(position: TextDocumentPositionParams): Pair<CompiledFile, Int>? {
+        return recover(position.textDocument.uri, position.position, Recompile.NEVER)
     }
 
     private fun recover(uriString: String, position: Position, recompile: Recompile): Pair<CompiledFile, Int>? {
@@ -91,7 +90,7 @@ class KotlinTextDocumentService(
     override fun hover(position: HoverParams): CompletableFuture<Hover?> = async.compute {
         LOG.info("Hovering at {}", describePosition(position))
 
-        val (file, cursor) = recover(position, Recompile.NEVER) ?: return@compute null
+        val (file, cursor) = recover(position) ?: return@compute null
         hoverAt(file, cursor) ?: noResult("No hover found at ${describePosition(position)}", null)
     }
 
@@ -103,14 +102,14 @@ class KotlinTextDocumentService(
     override fun definition(position: DefinitionParams): CompletableFuture<Either<List<Location>, List<LocationLink>>> = async.compute {
         LOG.info("Go-to-definition at {}", describePosition(position))
 
-        val (file, cursor) = recover(position, Recompile.NEVER) ?: return@compute Either.forLeft(emptyList())
+        val (file, cursor) = recover(position) ?: return@compute Either.forLeft(emptyList())
         goToDefinition(
             file,
             cursor,
             uriContentProvider.classContentProvider,
             tempDirectory,
             config.externalSources,
-            classPath
+            clientSession.classPath
         )
             ?.let(::listOf)
             ?.let { Either.forLeft<List<Location>, List<LocationLink>>(it) }
@@ -122,14 +121,14 @@ class KotlinTextDocumentService(
     }
 
     override fun rename(params: RenameParams) = async.compute {
-        val (file, cursor) = recover(params, Recompile.NEVER) ?: return@compute null
+        val (file, cursor) = recover(params) ?: return@compute null
         renameSymbol(file, cursor, sourcePath, params.newName)
     }
 
     override fun completion(position: CompletionParams): CompletableFuture<Either<List<CompletionItem>, CompletionList>> = async.compute {
         LOG.info("Completing at {}", describePosition(position))
 
-        val (file, cursor) = recover(position, Recompile.NEVER)
+        val (file, cursor) = recover(position)
             ?: return@compute Either.forRight(CompletionList()) // TODO: Investigate when to recompile
         val completions = completions(file, cursor, sourcePath.index, config.completion)
         LOG.info("Found {} items", completions.items.size)
@@ -168,7 +167,7 @@ class KotlinTextDocumentService(
     override fun signatureHelp(position: SignatureHelpParams): CompletableFuture<SignatureHelp?> = async.compute {
         LOG.info("Signature help at {}", describePosition(position))
 
-        val (file, cursor) = recover(position, Recompile.NEVER) ?: return@compute null
+        val (file, cursor) = recover(position) ?: return@compute null
         fetchSignatureHelpAt(file, cursor) ?: noResult("No function call around ${describePosition(position)}", null)
     }
 

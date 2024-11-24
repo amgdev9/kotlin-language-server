@@ -1,13 +1,11 @@
 package org.javacs.kt.externalsources
 
-import org.javacs.kt.CompilerClassPath
+import org.javacs.kt.clientSession
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 
-class JdkSourceArchiveProvider(
-    private val classPath: CompilerClassPath
-) : SourceArchiveProvider {
+class JdkSourceArchiveProvider : SourceArchiveProvider {
 
     /**
      * Checks if the given path is inside the JDK. If it is, we return the corresponding source zip.
@@ -16,7 +14,7 @@ class JdkSourceArchiveProvider(
      * TODO: improve this resolution logic to work for older JDK versions as well.
      */
     override fun fetchSourceArchive(compiledArchive: Path): Path? {
-        classPath.javaHome?.let {
+        clientSession.classPath.javaHome?.let {
             val javaHomePath = File(it).toPath()
             if (compiledArchive == javaHomePath) {
                 return Paths.get(compiledArchive.toString(), "lib", "src.zip")

@@ -1,9 +1,11 @@
 package org.javacs.kt
 
+import org.eclipse.lsp4j.MessageParams
+import org.eclipse.lsp4j.MessageType
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.PrintStream
 import java.time.Instant
-import java.util.*
 import java.util.logging.Handler
 import java.util.logging.Level
 import java.util.logging.LogRecord
@@ -43,36 +45,32 @@ class LogMessage(
 )
 
 class Logger {
-    private var outBackend: ((LogMessage) -> Unit)? = null
-    private var errBackend: ((LogMessage) -> Unit)? = null
-    private val outQueue: Queue<LogMessage> = ArrayDeque()
-    private val errQueue: Queue<LogMessage> = ArrayDeque()
-    private val errStream = DelegatePrintStream { logError(LogMessage(LogLevel.ERROR, it.trimEnd())) }
+    private val errStream = DelegatePrintStream { log(LogMessage(LogLevel.ERROR, it.trimEnd())) }
     val outStream = DelegatePrintStream { log(LogMessage(LogLevel.INFO, it.trimEnd())) }
 
     val logTime = false
     var level = LogLevel.INFO   // Change for debugging purposes
 
-    fun logError(msg: LogMessage) {
-        if (errBackend == null) {
-            errQueue.offer(msg)
-        } else {
-            errBackend?.invoke(msg)
-        }
+    // Temp logs for debugging
+    val logFile: File = File("/home/amg/Projects/kotlin-language-server/log.txt")
+
+    init {
+        if(logFile.exists()) logFile.delete()
+        logFile.createNewFile()
     }
 
-    fun log(msg: LogMessage) {
-        if (outBackend == null) {
-            outQueue.offer(msg)
-        } else {
-            outBackend?.invoke(msg)
-        }
+    private fun log(msg: LogMessage) {
+        logFile.appendText("${msg.level}: ${msg.message}\n")
+        clientSession.client.logMessage(MessageParams().apply {
+            type = msg.level.toLSPMessageType()
+            message = msg.message
+        })
     }
 
     private fun logWithPlaceholdersAt(msgLevel: LogLevel, msg: String, placeholders: Array<out Any?>) {
-        if (level.value <= msgLevel.value) {
-            log(LogMessage(msgLevel, format(insertPlaceholders(msg, placeholders))))
-        }
+        if (level.value > msgLevel.value) return
+
+        log(LogMessage(msgLevel, format(insertPlaceholders(msg, placeholders))))
     }
 
     fun printStackTrace(throwable: Throwable) = throwable.printStackTrace(errStream)
@@ -95,16 +93,6 @@ class Logger {
     fun connectJavaUtilLogFrontend() {
         val rootLogger = java.util.logging.Logger.getLogger("")
         rootLogger.addHandler(JULRedirector(this))
-    }
-
-    fun connectOutputBackend(outBackend: (LogMessage) -> Unit) {
-        this.outBackend = outBackend
-        flushOutQueue()
-    }
-
-    fun connectErrorBackend(errBackend: (LogMessage) -> Unit) {
-        this.errBackend = errBackend
-        flushErrQueue()
     }
 
     private fun insertPlaceholders(msg: String, placeholders: Array<out Any?>): String {
@@ -130,18 +118,6 @@ class Logger {
         return result.toString()
     }
 
-    private fun flushOutQueue() {
-        while (outQueue.isNotEmpty()) {
-            outBackend?.invoke(outQueue.poll())
-        }
-    }
-
-    private fun flushErrQueue() {
-        while (errQueue.isNotEmpty()) {
-            errBackend?.invoke(errQueue.poll())
-        }
-    }
-
     private fun format(msg: String): String {
         val time = if (logTime) "${Instant.now()} " else ""
         var thread = Thread.currentThread().name
@@ -155,6 +131,13 @@ class Logger {
         } else {
             ".." + str.substring(str.length - length + 2)
         }
+}
+
+private fun LogLevel.toLSPMessageType(): MessageType = when (this) {
+    LogLevel.ERROR -> MessageType.Error
+    LogLevel.WARN -> MessageType.Warning
+    LogLevel.INFO -> MessageType.Info
+    else -> MessageType.Log
 }
 
 class DelegatePrintStream(private val delegate: (String) -> Unit): PrintStream(ByteArrayOutputStream(0)) {

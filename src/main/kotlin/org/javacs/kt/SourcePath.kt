@@ -18,7 +18,6 @@ import java.net.URI
 import java.util.concurrent.locks.ReentrantLock
 
 class SourcePath(
-    private val classPath: CompilerClassPath,
     private val contentProvider: URIContentProvider
 ) {
     private val files = mutableMapOf<URI, SourceFile>()
@@ -57,7 +56,7 @@ class SourcePath(
 
         fun parse() {
             // TODO: Create PsiFile using the stored language instead
-            parsed = classPath.compiler.createKtFile(content, path ?: Paths.get("sourceFile.virtual.$extension"))
+            parsed = clientSession.classPath.compiler.createKtFile(content, path ?: Paths.get("sourceFile.virtual.$extension"))
         }
 
         fun parseIfChanged() {
@@ -83,7 +82,7 @@ class SourcePath(
 
             val oldFile = clone()
 
-            val (context, module) = classPath.compiler.compileKtFile(parsed!!, allIncludingThis())
+            val (context, module) = clientSession.classPath.compiler.compileKtFile(parsed!!, allIncludingThis())
             parseDataWriteLock.withLock {
                 compiledContext = context
                 this.module = module
@@ -103,7 +102,7 @@ class SourcePath(
                 parseIfChanged().apply { compileIfNull() }.let { doPrepareCompiledFile() }
 
         private fun doPrepareCompiledFile(): CompiledFile =
-                CompiledFile(content, compiledFile!!, compiledContext!!, module!!, allIncludingThis(), classPath, isScript)
+                CompiledFile(content, compiledFile!!, compiledContext!!, module!!, allIncludingThis(), clientSession.classPath, isScript)
 
         private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
             if (isTemporary) (all().asSequence() + sequenceOf(parsed!!)).toList()
@@ -150,7 +149,7 @@ class SourcePath(
     fun delete(uri: URI) {
         files[uri]?.let {
             refreshWorkspaceIndexes(listOf(it), listOf())
-            classPath.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
+            clientSession.classPath.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
         }
 
         files.remove(uri)
@@ -211,7 +210,7 @@ class SourcePath(
         // Get all the files. This will parse them if they changed
         val allFiles = all()
         beforeCompileCallback.invoke()
-        val (context, module) = classPath.compiler.compileKtFiles(parse.values, allFiles)
+        val (context, module) = clientSession.classPath.compiler.compileKtFiles(parse.values, allFiles)
 
         // Update cache
         for ((f, parsed) in parse) {
@@ -253,12 +252,12 @@ class SourcePath(
 
         // If the code generation fails for some reason, we generate code for the other files anyway
         try {
-            classPath.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
+            clientSession.classPath.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
             val module = file.module
             val context = file.compiledContext
             if (module == null || context == null) return
 
-            classPath.compiler.generateCode(module, context, listOfNotNull(file.compiledFile))
+            clientSession.classPath.compiler.generateCode(module, context, listOfNotNull(file.compiledFile))
             file.lastSavedFile = file.compiledFile
         } catch (ex: Exception) {
             LOG.printStackTrace(ex)

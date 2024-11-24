@@ -33,27 +33,25 @@ import kotlin.system.exitProcess
 class KotlinLanguageServer(
     val config: Configuration = Configuration()
 ) : LanguageServer, LanguageClientAware, Closeable {
-    val classPath = CompilerClassPath(config.compiler, config.codegen)
-
     private val tempDirectory = TemporaryFolder()
     private val uriContentProvider = URIContentProvider(
         ClassContentProvider(
             tempDirectory,
             CompositeSourceArchiveProvider(
-                JdkSourceArchiveProvider(classPath),
-                ClassPathSourceArchiveProvider(classPath)
+                JdkSourceArchiveProvider(),
+                ClassPathSourceArchiveProvider()
             )
         )
     )
 
-    private val sourcePath by lazy { SourcePath(classPath, uriContentProvider) }
+    private val sourcePath by lazy { SourcePath(uriContentProvider) }
     private val sourceFiles by lazy { SourceFiles(sourcePath, uriContentProvider) }
 
     private val textDocuments by lazy {
-        KotlinTextDocumentService(sourceFiles, sourcePath, config, tempDirectory, uriContentProvider, classPath)
+        KotlinTextDocumentService(sourceFiles, sourcePath, config, tempDirectory, uriContentProvider)
     }
-    private val workspaces by lazy { KotlinWorkspaceService(sourceFiles, sourcePath, classPath, textDocuments, config) }
-    private val protocolExtensions by lazy { KotlinProtocolExtensionService(uriContentProvider, classPath, sourcePath) }
+    private val workspaces by lazy { KotlinWorkspaceService(sourceFiles, sourcePath, textDocuments, config) }
+    private val protocolExtensions by lazy { KotlinProtocolExtensionService(uriContentProvider, sourcePath) }
 
     private lateinit var client: LanguageClient
 
@@ -65,9 +63,6 @@ class KotlinLanguageServer(
 
     override fun connect(client: LanguageClient) {
         this.client = client
-        connectLoggingBackend()
-
-        LOG.info("Connected to client")
     }
 
     override fun getTextDocumentService(): KotlinTextDocumentService = textDocuments
@@ -77,8 +72,6 @@ class KotlinLanguageServer(
     fun getProtocolExtensionService(): KotlinProtocolExtensions = protocolExtensions
 
     override fun initialize(params: InitializeParams): CompletableFuture<InitializeResult> = async.compute {
-        LOG.info("Kotlin Language Server: Version $VERSION")
-
         val serverCapabilities = ServerCapabilities().apply {
             setTextDocumentSync(TextDocumentSyncKind.Incremental)
             workspace = WorkspaceServerCapabilities()
@@ -116,16 +109,18 @@ class KotlinLanguageServer(
         if(folders.isEmpty()) {
             throw RuntimeException("No workspace folders specified!")
         }
-        if (folders.size > 1) {
-            LOG.info("Detected ${folders.size} workspace folders, picking the first one...")
-        }
         val folder = folders.first()
         val root = Paths.get(parseURI(folder.uri))
 
         clientSession = ClientSession(
             db = setupDB(root),
-            client = client
+            client = client,
+            classPath = CompilerClassPath(config.compiler, config.codegen)
         )
+
+        if (folders.size > 1) {
+            LOG.info("Detected ${folders.size} workspace folders, picking the first one...")
+        }
 
         LOG.info("Adding workspace folder {}", folder.name)
 
@@ -134,7 +129,7 @@ class KotlinLanguageServer(
         sourceFiles.addWorkspaceRoot(root, projectInfo)
 
         // This calls gradle and reinstantiates the compiler if classpath has changed
-        val refreshedCompiler = classPath.addWorkspaceRoot(root, projectInfo)
+        val refreshedCompiler = clientSession.classPath.addWorkspaceRoot(root, projectInfo)
         if (refreshedCompiler) {
             // Recompiles all source files, updating the index
             // TODO Is this needed?
@@ -146,29 +141,13 @@ class KotlinLanguageServer(
         textDocuments.lintAll()
 
         val serverInfo = ServerInfo("Kotlin Language Server", VERSION)
+        LOG.info("Kotlin Language Server: Version $VERSION")
         InitializeResult(serverCapabilities, serverInfo)
-    }
-
-    private fun connectLoggingBackend() {
-        // Temp logs for debugging
-        val logFile = File("/home/amg/Projects/kotlin-language-server/log.txt")
-        if(logFile.exists()) logFile.delete()
-        logFile.createNewFile()
-        
-        val backend: (LogMessage) -> Unit = {
-            logFile.appendText("${it.level}: ${it.message}\n")
-            client.logMessage(MessageParams().apply {
-                type = it.level.toLSPMessageType()
-                message = it.message
-            })
-        }
-        LOG.connectOutputBackend(backend)
-        LOG.connectErrorBackend(backend)
     }
 
     override fun close() {
         textDocumentService.close()
-        classPath.close()
+        clientSession.classPath.close()
         tempDirectory.close()
         async.shutdown(awaitTermination = true)
 
@@ -182,11 +161,4 @@ class KotlinLanguageServer(
     }
 
     override fun exit() {}
-}
-
-private fun LogLevel.toLSPMessageType(): MessageType = when (this) {
-    LogLevel.ERROR -> MessageType.Error
-    LogLevel.WARN -> MessageType.Warning
-    LogLevel.INFO -> MessageType.Info
-    else -> MessageType.Log
 }

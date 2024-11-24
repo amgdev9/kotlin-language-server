@@ -17,11 +17,11 @@ import org.javacs.kt.LOG
 import org.javacs.kt.SourceFiles
 import org.javacs.kt.SourcePath
 import org.javacs.kt.classpath.getGradleProjectInfo
+import org.javacs.kt.clientSession
 
 class KotlinWorkspaceService(
     private val sourceFiles: SourceFiles,
     private val sourcePath: SourcePath,
-    private val classPath: CompilerClassPath,
     private val textDocService: KotlinTextDocumentService,
     private val config: Configuration
 ) : WorkspaceService, LanguageClientAware {
@@ -31,6 +31,7 @@ class KotlinWorkspaceService(
         for (change in params.changes) {
             val uri = parseURI(change.uri)
             val path = uri.filePath
+            val classPath = clientSession.classPath
 
             when (change.type) {
                 FileChangeType.Created -> {
@@ -66,7 +67,7 @@ class KotlinWorkspaceService(
                     val jvm = compiler.jvm
                     get("target")?.asString?.let {
                         jvm.target = it
-                        classPath.updateCompilerConfiguration()
+                        clientSession.classPath.updateCompilerConfiguration()
                     }
                 }
             }
@@ -130,7 +131,7 @@ class KotlinWorkspaceService(
             val root = Paths.get(parseURI(change.uri))
 
             sourceFiles.removeWorkspaceRoot(root)
-            val refreshed = classPath.removeWorkspaceRoot(root)
+            val refreshed = clientSession.classPath.removeWorkspaceRoot(root)
             if (refreshed) {
                 sourcePath.refresh()
             }
@@ -143,7 +144,7 @@ class KotlinWorkspaceService(
             val projectInfo = getGradleProjectInfo(root)
 
             sourceFiles.addWorkspaceRoot(root, projectInfo)
-            val refreshed = classPath.addWorkspaceRoot(root, projectInfo)
+            val refreshed = clientSession.classPath.addWorkspaceRoot(root, projectInfo)
             if (refreshed) {
                 sourcePath.refresh()
             }

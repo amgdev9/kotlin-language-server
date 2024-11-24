@@ -30,7 +30,6 @@ import org.jetbrains.kotlin.scripting.configuration.ScriptingConfigurationKeys
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinitionProvider
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition // Legacy
-import org.jetbrains.kotlin.scripting.definitions.findScriptDefinition
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.expressions.ExpressionTypingServices
 import org.jetbrains.kotlin.util.KotlinFrontEndException
@@ -59,8 +58,6 @@ import org.jetbrains.kotlin.resolve.scopes.LexicalScope
 import org.jetbrains.kotlin.samWithReceiver.CliSamWithReceiverComponentContributor
 import org.jetbrains.kotlin.extensions.StorageComponentContainerContributor
 import java.io.File
-
-private val GRADLE_DSL_DEPENDENCY_PATTERN = Regex("^gradle-(?:kotlin-dsl|core).*\\.jar$")
 
 /**
  * Kotlin compiler APIs used to parse, analyze and compile

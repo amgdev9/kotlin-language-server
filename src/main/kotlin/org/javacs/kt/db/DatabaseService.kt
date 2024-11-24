@@ -1,6 +1,5 @@
 package org.javacs.kt.db
 
-import org.javacs.kt.LOG
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -18,12 +17,7 @@ fun setupDB(storagePath: Path): Database {
         DatabaseMetadataEntity.all().firstOrNull()?.version
     }
 
-    if (currentVersion == DB_VERSION) {
-        LOG.info("Database has the correct version $currentVersion and will be used as-is")
-        return db
-    }
-
-    LOG.info("Database has version $currentVersion != $DB_VERSION (the required version), therefore it will be rebuilt...")
+    if (currentVersion == DB_VERSION) return db
 
     Files.deleteIfExists(storagePath.resolve(DB_FILENAME))
     val newDb = getDbFromFile(storagePath)
