@@ -1,10 +1,10 @@
 package org.javacs.kt.classpath
 
+import org.javacs.kt.clientSession
 import org.javacs.kt.db.ClassPathCacheEntry
 import org.javacs.kt.db.ClassPathCacheEntryEntity
 import org.javacs.kt.db.ClassPathMetadataCache
 import org.javacs.kt.db.ClassPathMetadataCacheEntity
-import org.javacs.kt.db.getDB
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Path
@@ -41,7 +41,7 @@ fun getCachedClasspathWithSources(path: Path): GradleProjectInfo {
 }
 
 private var cachedClassPathEntries: Set<ClassPathEntry>
-    get() = transaction(getDB()) {
+    get() = transaction(clientSession.db) {
         ClassPathCacheEntryEntity.all().map {
             ClassPathEntry(
                 compiledJar = Paths.get(it.compiledJar),
@@ -49,7 +49,7 @@ private var cachedClassPathEntries: Set<ClassPathEntry>
             )
         }.toSet()
     }
-    set(newEntries) = transaction(getDB()) {
+    set(newEntries) = transaction(clientSession.db) {
         ClassPathCacheEntry.deleteAll()
         newEntries.map {
             ClassPathCacheEntryEntity.new {
@@ -60,7 +60,7 @@ private var cachedClassPathEntries: Set<ClassPathEntry>
     }
 
 private var cachedClassPathMetadata
-    get() = transaction(getDB()) {
+    get() = transaction(clientSession.db) {
         ClassPathMetadataCacheEntity.all().map {
             ClasspathMetadata(
                 includesSources = it.includesSources,
@@ -68,7 +68,7 @@ private var cachedClassPathMetadata
             )
         }.firstOrNull()
     }
-    set(newClassPathMetadata) = transaction(getDB()) {
+    set(newClassPathMetadata) = transaction(clientSession.db) {
         ClassPathMetadataCache.deleteAll()
         val newClassPathMetadataRow = newClassPathMetadata ?: ClasspathMetadata()
         ClassPathMetadataCacheEntity.new {
@@ -78,7 +78,7 @@ private var cachedClassPathMetadata
     }
 
 private fun updateClasspathCache(path: Path, newClasspathEntries: Set<ClassPathEntry>, includesSources: Boolean) {
-    transaction(getDB()) {
+    transaction(clientSession.db) {
         cachedClassPathEntries = newClasspathEntries
         cachedClassPathMetadata = cachedClassPathMetadata?.copy(
             includesSources = includesSources,

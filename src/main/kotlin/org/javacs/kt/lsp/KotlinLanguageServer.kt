@@ -6,6 +6,7 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonDelegate
 import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.LanguageServer
+import org.javacs.kt.ClientSession
 import org.javacs.kt.CompilerClassPath
 import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
@@ -18,6 +19,7 @@ import org.javacs.kt.externalsources.*
 import org.javacs.kt.LanguageClientProgress
 import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.classpath.getGradleProjectInfo
+import org.javacs.kt.clientSession
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
@@ -137,7 +139,9 @@ class KotlinLanguageServer(
         val folder = folders.first()
         val root = Paths.get(parseURI(folder.uri))
 
-        setupDB(root)
+        clientSession = ClientSession(
+            db = setupDB(root)
+        )
 
         LOG.info("Adding workspace folder {}", folder.name)
 

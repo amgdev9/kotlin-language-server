@@ -2,11 +2,11 @@ package org.javacs.kt.index
 
 import org.javacs.kt.LOG
 import org.javacs.kt.LanguageClientProgress
+import org.javacs.kt.clientSession
 import org.javacs.kt.db.MAX_FQNAME_LENGTH
 import org.javacs.kt.db.MAX_SHORT_NAME_LENGTH
 import org.javacs.kt.db.SymbolEntity
 import org.javacs.kt.db.Symbols
-import org.javacs.kt.db.getDB
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
@@ -28,7 +28,7 @@ class SymbolIndex {
 
         progressFactory?.create("Indexing")?.thenApplyAsync { progress ->
             try {
-                transaction(getDB()) {
+                transaction(clientSession.db) {
                     // Remove everything first.
                     Symbols.deleteAll()
                     // Add new ones.
@@ -51,7 +51,7 @@ class SymbolIndex {
         LOG.info("Updating symbol index...")
 
         try {
-            transaction(getDB()) {
+            transaction(clientSession.db) {
                 removeDeclarations(remove)
                 addDeclarations(add)
 
@@ -105,7 +105,7 @@ class SymbolIndex {
         fqName.toString().length <= MAX_FQNAME_LENGTH
             && fqName.shortName().toString().length <= MAX_SHORT_NAME_LENGTH
 
-    fun query(prefix: String, receiverType: FqName? = null, limit: Int = 20, suffix: String = "%"): List<Symbol> = transaction(getDB()) {
+    fun query(prefix: String, receiverType: FqName? = null, limit: Int = 20, suffix: String = "%"): List<Symbol> = transaction(clientSession.db) {
         // TODO: Extension completion currently only works if the receiver matches exactly,
         //       ideally this should work with subtypes as well
         SymbolEntity.find {
@@ -126,7 +126,7 @@ class SymbolIndex {
                 it.memberScope.getContributedDescriptors(
                     DescriptorKindFilter.ALL
                 ) { name -> !exclusions.any { declaration -> declaration.name == name } }
-            } catch (e: IllegalStateException) {
+            } catch (_: IllegalStateException) {
                 LOG.warn("Could not query descriptors in package $it")
                 emptyList()
             }
