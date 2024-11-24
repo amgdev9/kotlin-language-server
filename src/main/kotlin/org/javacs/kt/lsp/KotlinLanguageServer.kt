@@ -143,7 +143,6 @@ class KotlinLanguageServer(
 
         progress?.update("Updating source path", 25)
 
-        // TODO Use gradle to find source files
         sourceFiles.addWorkspaceRoot(root)
 
         progress?.update("Updating class path", 50)

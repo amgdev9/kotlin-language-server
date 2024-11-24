@@ -14,12 +14,24 @@ data class GradleProjectInfo(
 )
 
 fun getGradleProjectInfo(path: Path): GradleProjectInfo {
-    val projectDirectory = path.parent
-
-    val projectInfo = readDependenciesViaGradleCLI(projectDirectory)
-    LOG.info("Resolved dependencies for '${projectDirectory.fileName}' using Gradle")
+    val buildGradleFile = getBuildGradleFile(path)
+    if(buildGradleFile == null) {
+        throw RuntimeException("build.gradle file not found")
+    }
+    val projectInfo = readDependenciesViaGradleCLI(path)
+    LOG.info("Resolved dependencies for '${path.fileName}' using Gradle")
 
     return projectInfo
+}
+
+private fun getBuildGradleFile(workspaceRoot: Path): Path? {
+    val buildGradle = workspaceRoot.resolve("build.gradle")
+    if(Files.exists(buildGradle)) return buildGradle
+
+    val buildGradleKts = workspaceRoot.resolve("build.gradle.kts")
+    if(Files.exists(buildGradleKts)) return buildGradleKts
+
+    return null
 }
 
 fun getGradleCurrentBuildFileVersion(path: Path) = path.toFile().lastModified()
@@ -96,11 +108,13 @@ private fun parseGradleCLIDependencies(output: String): GradleProjectInfo {
         if(words.size != 2) return@forEach
         val (type, path) = words
 
+        if(!Files.exists(Path.of(path))) return@forEach
+
         if(type == "kotlin-lsp-sourcedir-java") {
             javaSourceDirs.add(Paths.get(path))
         } else if(type == "kotlin-lsp-sourcedir-kotlin") {
             kotlinSourceDirs.add(Paths.get(path))
-        } else if(type == "kotlin-lsp-gradle" && path.endsWith(".jar")) {
+        } else if(type == "kotlin-lsp-gradle" && path.endsWith(".jar") || Files.isDirectory(Path.of(path))) {
             classpath.add(ClassPathEntry(Paths.get(path), null))
         }
     }
