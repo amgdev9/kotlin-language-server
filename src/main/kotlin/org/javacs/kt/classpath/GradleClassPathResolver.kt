@@ -1,7 +1,6 @@
 package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
-import org.javacs.kt.util.findCommandOnPath
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -142,4 +141,18 @@ private fun execAndReadStdoutAndStderr(shellCommand: String, directory: Path): P
     process.waitFor()
 
     return Pair(stdout.toString(), stderr.toString())
+}
+
+private fun findCommandOnPath(fileName: String): Path? {
+    for (dir in System.getenv("PATH").split(File.pathSeparator)) {
+        val file = File(dir, fileName)
+
+        if (file.isFile && file.canExecute()) {
+            LOG.info("Found {} at {}", fileName, file.absolutePath)
+
+            return Paths.get(file.absolutePath)
+        }
+    }
+
+    return null
 }

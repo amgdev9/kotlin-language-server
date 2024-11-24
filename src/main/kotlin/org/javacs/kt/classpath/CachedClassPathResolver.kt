@@ -1,50 +1,14 @@
 package org.javacs.kt.classpath
 
-import org.javacs.kt.LOG
-import org.javacs.kt.getDB
-import org.jetbrains.exposed.dao.IntEntity
-import org.jetbrains.exposed.dao.IntEntityClass
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.SchemaUtils
+import org.javacs.kt.db.ClassPathCacheEntry
+import org.javacs.kt.db.ClassPathCacheEntryEntity
+import org.javacs.kt.db.ClassPathMetadataCache
+import org.javacs.kt.db.ClassPathMetadataCacheEntity
+import org.javacs.kt.db.getDB
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Path
 import java.nio.file.Paths
-
-private const val MAX_PATH_LENGTH = 2047
-
-private object ClassPathMetadataCache : IntIdTable() {
-    val includesSources = bool("includessources")
-    val buildFileVersion = long("buildfileversion").nullable()
-}
-
-private object ClassPathCacheEntry : IntIdTable() {
-    val compiledJar = varchar("compiledjar", length = MAX_PATH_LENGTH)
-    val sourceJar = varchar("sourcejar", length = MAX_PATH_LENGTH).nullable()
-}
-
-class ClassPathMetadataCacheEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<ClassPathMetadataCacheEntity>(ClassPathMetadataCache)
-
-    var includesSources by ClassPathMetadataCache.includesSources
-    var buildFileVersion by ClassPathMetadataCache.buildFileVersion
-}
-
-class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<ClassPathCacheEntryEntity>(ClassPathCacheEntry)
-
-    var compiledJar by ClassPathCacheEntry.compiledJar
-    var sourceJar by ClassPathCacheEntry.sourceJar
-}
-
-fun createCachedResolverTables() {
-    transaction(getDB()) {
-        SchemaUtils.createMissingTablesAndColumns(
-            ClassPathMetadataCache, ClassPathCacheEntry
-        )
-    }
-}
 
 fun getCachedClasspath(path: Path): GradleProjectInfo {
     return getGradleProjectInfo(path)

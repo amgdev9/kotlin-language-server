@@ -49,7 +49,6 @@ class CompilerClassPath(
             throw RuntimeException("Workspace root not set")
         }
 
-        createCachedResolverTables()
         var refreshCompiler = updateJavaSourcePath
 
         if (updateClassPath) {

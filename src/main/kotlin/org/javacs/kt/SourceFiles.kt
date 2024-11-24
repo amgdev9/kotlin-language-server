@@ -1,19 +1,14 @@
 package org.javacs.kt
 
-import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import com.intellij.lang.Language
-import org.jetbrains.kotlin.idea.KotlinLanguage
+import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
 import org.javacs.kt.classpath.GradleProjectInfo
-import org.javacs.kt.classpath.getGradleProjectInfo
-import org.javacs.kt.util.filePath
-import org.javacs.kt.util.describeURIs
 import org.javacs.kt.util.describeURI
-import java.io.BufferedReader
-import java.io.StringReader
-import java.io.StringWriter
-import java.io.IOException
-import java.io.FileNotFoundException
+import org.javacs.kt.util.describeURIs
+import org.javacs.kt.util.filePath
+import org.jetbrains.kotlin.idea.KotlinLanguage
+import java.io.*
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -68,17 +63,17 @@ class SourceFiles(
 ) {
     private var workspaceRoot: Path? = null
     private val files = NotifySourcePath(sourcePath)
-    private val open = mutableSetOf<URI>()
+    private val openFiles = mutableSetOf<URI>()
 
     fun open(uri: URI, content: String, version: Int) {
         files[uri] = SourceVersion(content, version, languageOf(uri), isTemporary = false)
-        open.add(uri)
+        openFiles.add(uri)
     }
 
     fun close(uri: URI) {
-        if (uri !in open) return
+        if (uri !in openFiles) return
 
-        open.remove(uri)
+        openFiles.remove(uri)
         val removed = files.removeIfTemporary(uri)
         if (removed) return
 
@@ -136,14 +131,6 @@ class SourceFiles(
         null
     }
 
-    private fun isSource(uri: URI): Boolean = languageOf(uri) != null
-
-    private fun languageOf(uri: URI): Language? {
-        val fileName = uri.filePath?.fileName?.toString() ?: return null
-        if (fileName.endsWith(".kt") || fileName.endsWith(".kts")) return KotlinLanguage.INSTANCE
-        return null
-    }
-
     fun addWorkspaceRoot(root: Path, projectInfo: GradleProjectInfo) {
         LOG.info("Searching $root...")
         val addSources = findKotlinSourceFiles(projectInfo.kotlinSourceDirs)
@@ -182,7 +169,7 @@ class SourceFiles(
         workspaceRoot = null
     }
 
-    fun isOpen(uri: URI): Boolean = (uri in open)
+    fun isOpen(uri: URI): Boolean = (uri in openFiles)
 }
 
 private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): String {
@@ -223,4 +210,12 @@ private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): S
         if (next == -1) return writer.toString()
         else writer.write(next)
     }
+}
+
+private fun isSource(uri: URI): Boolean = languageOf(uri) != null
+
+private fun languageOf(uri: URI): Language? {
+    val fileName = uri.filePath?.fileName?.toString() ?: return null
+    if (fileName.endsWith(".kt") || fileName.endsWith(".kts")) return KotlinLanguage.INSTANCE
+    return null
 }

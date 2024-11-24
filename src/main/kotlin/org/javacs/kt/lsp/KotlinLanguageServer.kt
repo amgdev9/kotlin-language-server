@@ -21,7 +21,7 @@ import org.javacs.kt.classpath.getGradleProjectInfo
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
-import org.javacs.kt.setupDB
+import org.javacs.kt.db.setupDB
 import java.io.Closeable
 import java.io.File
 import java.nio.file.Paths
@@ -138,7 +138,6 @@ class KotlinLanguageServer(
         val root = Paths.get(parseURI(folder.uri))
 
         setupDB(root)
-        sourcePath.index.createTables()
 
         LOG.info("Adding workspace folder {}", folder.name)
 
