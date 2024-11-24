@@ -1,7 +1,4 @@
-NEXT:
-- Evitar multiples llamadas a gradle en el arranque
-
-TODO:
+- Ver como gestionar el ciclo de vida de los objetos
 - Eliminar ProgressFactory
 - Implementar cacheo del classpath
 - Optimizar indexado

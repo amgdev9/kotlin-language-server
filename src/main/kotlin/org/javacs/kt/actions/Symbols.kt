@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package org.javacs.kt.actions
 
 import com.intellij.psi.PsiElement

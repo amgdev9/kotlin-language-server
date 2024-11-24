@@ -31,12 +31,6 @@ class KotlinWorkspaceService(
         languageClient = client
     }
 
-    override fun executeCommand(params: ExecuteCommandParams): CompletableFuture<Any> {
-        LOG.info("Executing command: {} with {}", params.command, params.arguments)
-
-        return CompletableFuture.completedFuture(null)
-    }
-
     override fun didChangeWatchedFiles(params: DidChangeWatchedFilesParams) {
         for (change in params.changes) {
             val uri = parseURI(change.uri)

@@ -10,7 +10,6 @@ import org.javacs.kt.SourcePath
 import org.javacs.kt.URIContentProvider
 import org.javacs.kt.actions.listOverridableMembers
 import org.javacs.kt.actions.offset
-import org.javacs.kt.actions.resolveMain
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.parseURI
 import java.util.concurrent.CompletableFuture
@@ -22,9 +21,6 @@ interface KotlinProtocolExtensions {
 
     @JsonRequest
     fun buildOutputLocation(): CompletableFuture<String?>
-
-    @JsonRequest
-    fun mainClass(textDocument: TextDocumentIdentifier): CompletableFuture<Map<String, Any?>>
 
     @JsonRequest
     fun overrideMember(position: TextDocumentPositionParams): CompletableFuture<List<CodeAction>>
@@ -43,18 +39,6 @@ class KotlinProtocolExtensionService(
 
     override fun buildOutputLocation(): CompletableFuture<String?> = async.compute {
         this@KotlinProtocolExtensionService.classPath.outputDirectory.absolutePath
-    }
-
-    override fun mainClass(textDocument: TextDocumentIdentifier): CompletableFuture<Map<String, Any?>> = async.compute {
-        val fileUri = parseURI(textDocument.uri)
-
-        val workspacePath = (this@KotlinProtocolExtensionService.classPath.workspaceRoot ?: "")
-        
-        val compiledFile = sourcePath.currentVersion(fileUri)
-
-        resolveMain(compiledFile) + mapOf(
-            "projectRoot" to workspacePath
-        )
     }
 
     override fun overrideMember(position: TextDocumentPositionParams): CompletableFuture<List<CodeAction>> = async.compute {
