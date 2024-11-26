@@ -10,6 +10,7 @@ private var CLIENT_SESSION: ClientSession? = null
 
 data class ClientSession(
     val db: Database,
+    val rootPath: Path,
     val client: LanguageClient,
     val classPath: CompilerClassPath,
     val tempFolder: TemporaryFolder,

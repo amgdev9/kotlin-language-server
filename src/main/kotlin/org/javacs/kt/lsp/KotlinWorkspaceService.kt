@@ -100,29 +100,6 @@ class KotlinWorkspaceService: WorkspaceService, LanguageClientAware {
     }
 
     override fun didChangeWorkspaceFolders(params: DidChangeWorkspaceFoldersParams) {
-        for (change in params.event.removed) {
-            LOG.info("Dropping workspace {} from source path", change.uri)
-
-            val root = Paths.get(parseURI(change.uri))
-
-            clientSession.sourceFiles.removeWorkspaceRoot(root)
-            val refreshed = clientSession.classPath.removeWorkspaceRoot(root)
-            if (refreshed) {
-                clientSession.sourcePath.refresh()
-            }
-        }
-
-        for (change in params.event.added) {
-            LOG.info("Adding workspace {} to source path", change.uri)
-
-            val root = Paths.get(parseURI(change.uri))
-            val projectInfo = getGradleProjectInfo(root)
-
-            clientSession.sourceFiles.addWorkspaceRoot(root, projectInfo)
-            val refreshed = clientSession.classPath.addWorkspaceRoot(root, projectInfo)
-            if (refreshed) {
-                clientSession.sourcePath.refresh()
-            }
-        }
+        // Not supporting this, just single workspace folder support
     }
 }

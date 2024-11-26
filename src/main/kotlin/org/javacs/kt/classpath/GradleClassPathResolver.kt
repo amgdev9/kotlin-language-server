@@ -1,6 +1,7 @@
 package org.javacs.kt.classpath
 
 import org.javacs.kt.LOG
+import org.javacs.kt.clientSession
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -12,7 +13,8 @@ data class GradleProjectInfo(
     val kotlinSourceDirs: Set<Path>,
 )
 
-fun getGradleProjectInfo(path: Path): GradleProjectInfo {
+fun getGradleProjectInfo(): GradleProjectInfo {
+    val path = clientSession.rootPath
     val buildGradleFile = getBuildGradleFile(path)
     if(buildGradleFile == null) {
         throw RuntimeException("build.gradle file not found")

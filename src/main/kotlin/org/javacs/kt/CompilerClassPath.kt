@@ -17,8 +17,6 @@ class CompilerClassPath(
     private val config: Configuration.Compiler,
     private val codegenConfig: Configuration.Codegen
 ) : Closeable {
-    var workspaceRoot: Path? = null
-
     private val javaSourcePath = mutableSetOf<Path>()
     val classPath = mutableSetOf<ClassPathEntry>()
     val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
@@ -44,15 +42,10 @@ class CompilerClassPath(
         updateJavaSourcePath: Boolean = true
     ): Boolean {
         // TODO: Fetch class path concurrently (and asynchronously)
-        val workspaceRoot = this.workspaceRoot
-        if(workspaceRoot == null) {
-            throw RuntimeException("Workspace root not set")
-        }
-
         var refreshCompiler = updateJavaSourcePath
 
         if (updateClassPath) {
-            val newClassPath = getClasspathOrEmpty(workspaceRoot)
+            val newClassPath = getClasspathOrEmpty()
             if (newClassPath.classPath != classPath) {
                 synchronized(classPath) {
                     syncPaths(classPath, newClassPath.classPath, "class path")
@@ -61,7 +54,7 @@ class CompilerClassPath(
             }
 
             async.compute {
-                val newClassPathWithSources = getClasspathWithSources(workspaceRoot)
+                val newClassPathWithSources = getClasspathWithSources()
                 synchronized(classPath) {
                     syncPaths(classPath, newClassPathWithSources.classPath, "class path with sources")
                 }
@@ -99,24 +92,10 @@ class CompilerClassPath(
         compiler.updateConfiguration(config)
     }
 
-    fun addWorkspaceRoot(root: Path, projectInfo: GradleProjectInfo): Boolean {
-        if(workspaceRoot != null) {
-            throw RuntimeException("Workspace root was set")
-        }
+    fun addWorkspaceRoot(projectInfo: GradleProjectInfo): Boolean {
+        LOG.info("Searching for dependencies and Java sources...")
 
-        LOG.info("Searching for dependencies and Java sources in workspace root {}", root)
-
-        workspaceRoot = root
         javaSourcePath.addAll(findJavaSourceFiles(projectInfo.javaSourceDirs))
-
-        return refresh()
-    }
-
-    fun removeWorkspaceRoot(root: Path): Boolean {
-        LOG.info("Removing dependencies and Java source path from workspace root {}", root)
-
-        workspaceRoot = null
-        javaSourcePath.clear()
 
         return refresh()
     }

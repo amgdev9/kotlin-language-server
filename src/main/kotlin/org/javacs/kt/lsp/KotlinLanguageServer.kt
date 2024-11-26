@@ -87,6 +87,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
         clientSession = ClientSession(
             db = setupDB(root),
+            rootPath = root,
             client = client,
             classPath = CompilerClassPath(config.compiler, config.codegen),
             tempFolder = TemporaryFolder(),
@@ -102,12 +103,12 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
         LOG.info("Adding workspace folder {}", folder.name)
 
-        val projectInfo = getGradleProjectInfo(root)
+        val projectInfo = getGradleProjectInfo()
 
-        clientSession.sourceFiles.addWorkspaceRoot(root, projectInfo)
+        clientSession.sourceFiles.setupWorkspaceRoot(projectInfo)
 
         // This reinstantiates the compiler if classpath has changed
-        val refreshedCompiler = clientSession.classPath.addWorkspaceRoot(root, projectInfo)
+        val refreshedCompiler = clientSession.classPath.addWorkspaceRoot(projectInfo)
         if (refreshedCompiler) {
             // Recompiles all source files, updating the index
             // TODO Is this needed?

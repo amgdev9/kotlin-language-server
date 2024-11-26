@@ -1,4 +1,3 @@
-- Workspace root en ClientSession (fuente de la verdad)
 - Implementar cacheo del classpath
 - Optimizar indexado
 

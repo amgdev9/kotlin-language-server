@@ -58,7 +58,6 @@ private class NotifySourcePath() {
  * Keep track of the text of all files in the workspace
  */
 class SourceFiles {
-    private var workspaceRoot: Path? = null
     private val files = NotifySourcePath()
     private val openFiles = mutableSetOf<URI>()
 
@@ -84,7 +83,9 @@ class SourceFiles {
     }
 
     fun edit(uri: URI, newVersion: Int, contentChanges: List<TextDocumentContentChangeEvent>) {
-        val existing = files[uri]!!
+        val existing = files[uri]
+        if(existing == null) return
+
         var newText = existing.content
 
         if (newVersion <= existing.version) {
@@ -128,11 +129,11 @@ class SourceFiles {
         null
     }
 
-    fun addWorkspaceRoot(root: Path, projectInfo: GradleProjectInfo) {
-        LOG.info("Searching $root...")
+    fun setupWorkspaceRoot(projectInfo: GradleProjectInfo) {
+        LOG.info("Searching kotlin files...")
         val addSources = findKotlinSourceFiles(projectInfo.kotlinSourceDirs)
 
-        LOG.info("Adding {} under {} to source path", "${addSources.size} files", root)
+        LOG.info("Adding {} to source path", "${addSources.size} files")
 
         // Load all kotlin files into RAM
         for (uri in addSources) {
@@ -144,8 +145,6 @@ class SourceFiles {
 
             files[uri] = sourceVersion
         }
-
-        workspaceRoot = root
     }
 
     private fun findKotlinSourceFiles(kotlinSourceDirs: Set<Path>): Set<URI> {
@@ -155,15 +154,6 @@ class SourceFiles {
             }
             .map { it.toUri() }
             .toSet()
-    }
-
-    fun removeWorkspaceRoot(root: Path) {
-        val rmSources = files.keys.filter { it.filePath?.startsWith(root) == true }
-
-        LOG.info("Removing {} under {} to source path", "${rmSources.size} files", root)
-
-        files.removeAll(rmSources)
-        workspaceRoot = null
     }
 
     fun isOpen(uri: URI): Boolean = (uri in openFiles)

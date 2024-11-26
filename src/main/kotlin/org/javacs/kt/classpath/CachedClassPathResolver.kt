@@ -10,8 +10,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Path
 import java.nio.file.Paths
 
-fun getCachedClasspath(path: Path): GradleProjectInfo {
-    return getGradleProjectInfo(path)
+fun getCachedClasspath(): GradleProjectInfo {
+    return getGradleProjectInfo()
 
     // TODO Implement caching for source files paths
     /*if (!dependenciesChanged(path)) {
@@ -27,8 +27,8 @@ fun getCachedClasspath(path: Path): GradleProjectInfo {
     return newClasspath*/
 }
 
-fun getCachedClasspathWithSources(path: Path): GradleProjectInfo {
-    return getGradleProjectInfo(path)
+fun getCachedClasspathWithSources(): GradleProjectInfo {
+    return getGradleProjectInfo()
 
     // TODO Implement caching for source files paths
     /*val classpath = cachedClassPathMetadata

@@ -3,17 +3,17 @@ package org.javacs.kt.classpath
 import org.javacs.kt.LOG
 import java.nio.file.Path
 
-fun getClasspath(workspaceRoot: Path): GradleProjectInfo {
-    return getCachedClasspath(workspaceRoot)
+fun getClasspath(): GradleProjectInfo {
+    return getCachedClasspath()
 }
 
-fun getClasspathWithSources(workspaceRoot: Path): GradleProjectInfo {
-    return getCachedClasspathWithSources(workspaceRoot)
+fun getClasspathWithSources(): GradleProjectInfo {
+    return getCachedClasspathWithSources()
 }
 
-fun getClasspathOrEmpty(path: Path): GradleProjectInfo {
+fun getClasspathOrEmpty(): GradleProjectInfo {
     try {
-        return getClasspath(path)
+        return getClasspath()
     } catch (e: Exception) {
         LOG.info(e.stackTraceToString())
         LOG.warn("Could not resolve classpath: {}", e.message)
