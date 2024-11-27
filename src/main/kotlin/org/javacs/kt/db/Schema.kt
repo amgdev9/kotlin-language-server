@@ -6,18 +6,6 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
 
-// Database metadata
-
-object DatabaseMetadata : IntIdTable() {
-    var version = integer("version")
-}
-
-class DatabaseMetadataEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<DatabaseMetadataEntity>(DatabaseMetadata)
-
-    var version by DatabaseMetadata.version
-}
-
 // Symbols index
 
 const val MAX_FQNAME_LENGTH = 255
@@ -109,7 +97,6 @@ class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
 
 fun setupTables() {
     SchemaUtils.createMissingTablesAndColumns(
-        DatabaseMetadata,
         Symbols,
         Locations,
         Ranges,
