@@ -7,16 +7,31 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import org.jetbrains.kotlin.cli.common.environment.setIdeaIoUseFallback
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
+import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.common.output.writeAllTo
+import org.jetbrains.kotlin.cli.jvm.compiler.CliBindingTrace
+import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
+import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
+import org.jetbrains.kotlin.cli.jvm.compiler.TopDownAnalyzerFacadeForJVM
 import org.jetbrains.kotlin.cli.jvm.config.addJavaSourceRoots
 import org.jetbrains.kotlin.cli.jvm.config.addJvmClasspathRoots
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration as KotlinCompilerConfiguration
+import org.jetbrains.kotlin.cli.jvm.config.configureJdkClasspathRoots
+import org.jetbrains.kotlin.codegen.ClassBuilderFactories
+import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
+import org.jetbrains.kotlin.codegen.state.GenerationState
+import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
+import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.container.ComponentProvider
 import org.jetbrains.kotlin.container.get
-import org.jetbrains.kotlin.compiler.plugin.ComponentRegistrar
+import org.jetbrains.kotlin.container.getService
+import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.metadata.jvm.deserialization.JvmProtoBufUtil
-import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.BindingTraceContext
 import org.jetbrains.kotlin.resolve.LazyTopDownAnalyzer
@@ -24,40 +39,17 @@ import org.jetbrains.kotlin.resolve.TopDownAnalysisMode
 import org.jetbrains.kotlin.resolve.calls.components.InferenceSession
 import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowInfo
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory
-import org.jetbrains.kotlin.scripting.compiler.plugin.ScriptingCompilerConfigurationComponentRegistrar
-import org.jetbrains.kotlin.scripting.compiler.plugin.definitions.CliScriptDefinitionProvider
-import org.jetbrains.kotlin.scripting.configuration.ScriptingConfigurationKeys
-import org.jetbrains.kotlin.scripting.definitions.ScriptDefinitionProvider
-import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
-import org.jetbrains.kotlin.scripting.definitions.KotlinScriptDefinition // Legacy
+import org.jetbrains.kotlin.resolve.scopes.LexicalScope
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.expressions.ExpressionTypingServices
 import org.jetbrains.kotlin.util.KotlinFrontEndException
 import java.io.Closeable
+import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
-import org.jetbrains.kotlin.cli.common.output.writeAllTo
-import org.jetbrains.kotlin.cli.common.messages.MessageCollector
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
-import org.jetbrains.kotlin.codegen.ClassBuilderFactories
-import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
-import org.jetbrains.kotlin.codegen.state.GenerationState
-import org.jetbrains.kotlin.container.getService
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.cli.jvm.compiler.CliBindingTrace
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.cli.jvm.compiler.TopDownAnalyzerFacadeForJVM
-import org.jetbrains.kotlin.cli.jvm.config.configureJdkClasspathRoots
-import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
-import org.jetbrains.kotlin.config.*
-import org.jetbrains.kotlin.resolve.scopes.LexicalScope
-import org.jetbrains.kotlin.samWithReceiver.CliSamWithReceiverComponentContributor
-import org.jetbrains.kotlin.extensions.StorageComponentContainerContributor
-import java.io.File
+import org.jetbrains.kotlin.config.CompilerConfiguration as KotlinCompilerConfiguration
 
 /**
  * Kotlin compiler APIs used to parse, analyze and compile
@@ -87,7 +79,6 @@ private class CompilationEnvironment(
             put(CommonConfigurationKeys.MODULE_NAME, JvmProtoBufUtil.DEFAULT_MODULE_NAME)
             put(CommonConfigurationKeys.LANGUAGE_VERSION_SETTINGS, languageVersionSettings)
             put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, LoggingMessageCollector)
-            add(ComponentRegistrar.PLUGIN_COMPONENT_REGISTRARS, ScriptingCompilerConfigurationComponentRegistrar())
             put(JVMConfigurationKeys.USE_PSI_CLASS_FILES_READING, true)
 
             // configure jvm runtime classpaths
@@ -104,18 +95,10 @@ private class CompilationEnvironment(
         configFiles = EnvironmentConfigFiles.JVM_CONFIG_FILES
     )
     val parser: KtPsiFactory
-    val scripts: ScriptDefinitionProvider
 
     init {
-        // hacky way to support SamWithReceiverAnnotations for scripts
-        val scriptDefinitions: List<ScriptDefinition> = environment.configuration.getList(ScriptingConfigurationKeys.SCRIPT_DEFINITIONS)
-        scriptDefinitions.takeIf { it.isNotEmpty() }?.let {
-            val annotations = scriptDefinitions.flatMap { it.asLegacyOrNull<KotlinScriptDefinition>()?.annotationsForSamWithReceivers ?: emptyList() }
-            StorageComponentContainerContributor.registerExtension(environment.project, CliSamWithReceiverComponentContributor(annotations))
-        }
         val project = environment.project
         parser = KtPsiFactory(project)
-        scripts = ScriptDefinitionProvider.getInstance(project)!! as CliScriptDefinitionProvider
     }
 
     fun updateConfiguration(config: Configuration.Compiler) {
@@ -149,7 +132,6 @@ private class CompilationEnvironment(
 class Compiler(
     javaSourcePath: Set<Path>,
     classPath: Set<Path>,
-    private val codegenConfig: Configuration.Codegen,
     private val outputDirectory: File,
 ) : Closeable {
     private var closed = false
@@ -167,8 +149,8 @@ class Compiler(
      * Updates the compiler environment using the given
      * configuration (which is a class from this project).
      */
-    fun updateConfiguration(config: Configuration.Compiler) {
-        defaultCompileEnvironment.updateConfiguration(config)
+    fun updateConfiguration() {
+        defaultCompileEnvironment.updateConfiguration(clientSession.config.compiler)
     }
 
     fun createPsiFile(content: String, file: Path = Paths.get("dummy.virtual.kt"), language: Language = KotlinLanguage.INSTANCE): PsiFile {
@@ -217,7 +199,7 @@ class Compiler(
                 return Pair(trace.bindingContext, container)
             }
         } catch (e: KotlinFrontEndException) {
-            throw RuntimeException("Error while analyzing: ${describeExpression(expression.text)}", e)
+            throw RuntimeException("Error while analyzing: ${expression.text}", e)
         }
     }
 
@@ -232,7 +214,7 @@ class Compiler(
     }
 
     fun generateCode(module: ModuleDescriptor, bindingContext: BindingContext, files: Collection<KtFile>) {
-        outputDirectory.takeIf { codegenConfig.enabled }?.let {
+        outputDirectory.takeIf { clientSession.config.codegen.enabled }?.let {
             compileLock.withLock {
                 val compileEnv = defaultCompileEnvironment
                 val state = GenerationState.Builder(
@@ -257,14 +239,6 @@ class Compiler(
 
         defaultCompileEnvironment.close()
         closed = true
-    }
-}
-
-private fun describeExpression(expression: String): String = expression.lines().let { lines ->
-    if (lines.size < 5) {
-        expression
-    } else {
-        (lines.take(3) + listOf("...", lines.last())).joinToString(separator = "\n")
     }
 }
 

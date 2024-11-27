@@ -13,10 +13,7 @@ import kotlin.streams.asSequence
  * Manages the class path (compiled JARs, etc), the Java source path
  * and the compiler. Note that Kotlin sources are stored in SourcePath.
  */
-class CompilerClassPath(
-    private val config: Configuration.Compiler,
-    private val codegenConfig: Configuration.Codegen
-) : Closeable {
+class CompilerClassPath: Closeable {
     private val javaSourcePath = mutableSetOf<Path>()
     val classPath = mutableSetOf<ClassPathEntry>()
     val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
@@ -25,16 +22,11 @@ class CompilerClassPath(
     var compiler = Compiler(
         javaSourcePath,
         classPath.map { it.compiledJar }.toSet(),
-        codegenConfig,
         outputDirectory
     )
         private set
 
     private val async = AsyncExecutor()
-
-    init {
-        compiler.updateConfiguration(config)
-    }
 
     /** Updates and possibly reinstantiates the compiler using new paths. */
     private fun refresh(
@@ -67,7 +59,6 @@ class CompilerClassPath(
             compiler = Compiler(
                 javaSourcePath,
                 classPath.asSequence().map { it.compiledJar }.toSet(),
-                codegenConfig,
                 outputDirectory
             )
             updateCompilerConfiguration()
@@ -89,10 +80,10 @@ class CompilerClassPath(
     }
 
     fun updateCompilerConfiguration() {
-        compiler.updateConfiguration(config)
+        compiler.updateConfiguration()
     }
 
-    fun addWorkspaceRoot(projectInfo: GradleProjectInfo): Boolean {
+    fun setupWorkspaceRoot(projectInfo: GradleProjectInfo): Boolean {
         LOG.info("Searching for dependencies and Java sources...")
 
         javaSourcePath.addAll(findJavaSourceFiles(projectInfo.javaSourceDirs))
@@ -123,20 +114,16 @@ class CompilerClassPath(
     }
 
     fun changedOnDisk(file: Path): Boolean {
-        val buildScript = isBuildScript(file)
         val javaSource = isJavaSource(file)
-
-        if (!buildScript && !javaSource) return false
+        if (!javaSource) return false
 
         return refresh(
-            updateClassPath = buildScript,
-            updateJavaSourcePath = javaSource
+            updateClassPath = false,
+            updateJavaSourcePath = true
         )
     }
 
     private fun isJavaSource(file: Path): Boolean = file.fileName.toString().endsWith(".java")
-
-    private fun isBuildScript(file: Path): Boolean = file.fileName.toString().let { it == "build.gradle" || it == "build.gradle.kts" }
 
     override fun close() {
         compiler.close()

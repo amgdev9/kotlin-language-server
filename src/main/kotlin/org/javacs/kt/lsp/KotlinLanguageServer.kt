@@ -2,7 +2,6 @@ package org.javacs.kt.lsp
 
 import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
-import org.eclipse.lsp4j.jsonrpc.services.JsonDelegate
 import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.LanguageServer
@@ -10,7 +9,7 @@ import org.javacs.kt.*
 import org.javacs.kt.actions.semanticTokensLegend
 import org.javacs.kt.classpath.getGradleProjectInfo
 import org.javacs.kt.db.setupDB
-import org.javacs.kt.externalsources.*
+import org.javacs.kt.externalsources.createDecompilerOutputDirectory
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.TemporaryFolder
 import org.javacs.kt.util.parseURI
@@ -23,7 +22,6 @@ import kotlin.system.exitProcess
 class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
     private val textDocuments = KotlinTextDocumentService()
     private val workspaces = KotlinWorkspaceService()
-    private val protocolExtensions = KotlinProtocolExtensionService()
 
     private lateinit var client: LanguageClient
 
@@ -39,9 +37,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
     override fun getTextDocumentService(): KotlinTextDocumentService = textDocuments
     override fun getWorkspaceService(): KotlinWorkspaceService = workspaces
-
-    @JsonDelegate
-    fun getProtocolExtensionService(): KotlinProtocolExtensions = protocolExtensions
 
     override fun initialize(params: InitializeParams): CompletableFuture<InitializeResult> = async.compute {
         val serverCapabilities = ServerCapabilities().apply {
@@ -78,6 +73,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             serverCapabilities.renameProvider = Either.forRight(RenameOptions(false))
         }
 
+        // Get root folder
         val folders = params.workspaceFolders
         if(folders.isEmpty()) {
             throw RuntimeException("No workspace folders specified!")
@@ -89,26 +85,28 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             db = setupDB(root),
             rootPath = root,
             client = client,
-            classPath = CompilerClassPath(config.compiler, config.codegen),
+            classPath = CompilerClassPath(),
             tempFolder = TemporaryFolder(),
             decompilerOutputDir = createDecompilerOutputDirectory(),
             sourcePath = SourcePath(),
             sourceFiles = SourceFiles(),
             config = config
         )
+        clientSession.classPath.compiler.updateConfiguration()
 
         if (folders.size > 1) {
             LOG.info("Detected ${folders.size} workspace folders, picking the first one...")
         }
 
-        LOG.info("Adding workspace folder {}", folder.name)
+        LOG.info("Workspace folder {}", folder.name)
 
+        // Load info from gradle
         val projectInfo = getGradleProjectInfo()
 
         clientSession.sourceFiles.setupWorkspaceRoot(projectInfo)
 
         // This reinstantiates the compiler if classpath has changed
-        val refreshedCompiler = clientSession.classPath.addWorkspaceRoot(projectInfo)
+        val refreshedCompiler = clientSession.classPath.setupWorkspaceRoot(projectInfo)
         if (refreshedCompiler) {
             // Recompiles all source files, updating the index
             // TODO Is this needed?

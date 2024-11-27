@@ -44,14 +44,6 @@ private class NotifySourcePath() {
         } else {
             false
         }
-
-    fun removeAll(rm: Collection<URI>) {
-        files -= rm
-
-        rm.forEach(clientSession.sourcePath::delete)
-    }
-
-    val keys get() = files.keys
 }
 
 /**
