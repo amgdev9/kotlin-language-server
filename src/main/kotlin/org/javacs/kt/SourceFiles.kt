@@ -16,9 +16,6 @@ import kotlin.streams.asSequence
 
 private class SourceVersion(val content: String, val version: Int, val language: Language?, val isTemporary: Boolean)
 
-/**
- * Notify SourcePath whenever a file changes
- */
 private class NotifySourcePath() {
     private val files = mutableMapOf<URI, SourceVersion>()
 

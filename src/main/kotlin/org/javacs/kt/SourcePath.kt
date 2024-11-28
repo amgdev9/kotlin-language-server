@@ -1,33 +1,25 @@
 package org.javacs.kt
 
-import org.javacs.kt.util.AsyncExecutor
-import org.javacs.kt.util.fileExtension
-import org.javacs.kt.util.filePath
-import org.javacs.kt.util.describeURI
 import com.intellij.lang.Language
 import org.javacs.kt.externalsources.contentOf
 import org.javacs.kt.index.refreshIndex
 import org.javacs.kt.index.updateIndexes
+import org.javacs.kt.util.AsyncExecutor
+import org.javacs.kt.util.describeURI
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.CompositeBindingContext
 import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
-import kotlin.concurrent.withLock
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.net.URI
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.sequences.plus
-import kotlin.sequences.toList
+import kotlin.concurrent.withLock
 
 class SourcePath {
     private val files = mutableMapOf<URI, SourceFile>()
     val parseDataWriteLock = ReentrantLock()
 
     private val indexAsync = AsyncExecutor()
-
-    var beforeCompileCallback: () -> Unit = {}
 
     private fun sourceFile(uri: URI): SourceFile {
         if (uri !in files) {
@@ -128,7 +120,6 @@ class SourcePath {
 
         // Get all the files. This will parse them if they changed
         val allFiles = all()
-        beforeCompileCallback.invoke()
         val (context, module) = clientSession.classPath.compiler.compileKtFiles(parse.values, allFiles)
 
         // Update cache

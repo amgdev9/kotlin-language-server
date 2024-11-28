@@ -88,6 +88,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
         LOG.info("Workspace folder {}", folder.name)
 
+        // Here starts the project load
         clientSession.sourceFiles.setupWorkspaceRoot()
 
         // This reinstantiates the compiler if classpath has changed
