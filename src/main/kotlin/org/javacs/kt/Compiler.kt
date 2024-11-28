@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.util.KotlinFrontEndException
 import java.io.Closeable
 import java.io.File
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -49,14 +48,6 @@ class Compiler(
         init {
             setIdeaIoUseFallback()
         }
-    }
-
-    /**
-     * Updates the compiler environment using the given
-     * configuration (which is a class from this project).
-     */
-    fun updateConfiguration() {
-        defaultCompileEnvironment.updateConfiguration()
     }
 
     fun createPsiFile(content: String, file: Path, language: Language): PsiFile {
@@ -118,6 +109,7 @@ class Compiler(
     }
 
     fun generateCode(module: ModuleDescriptor, bindingContext: BindingContext, files: Collection<KtFile>) {
+        return  // TODO This crashes, test it
         compileLock.withLock {
             val compileEnv = defaultCompileEnvironment
             val state = GenerationState.Builder(

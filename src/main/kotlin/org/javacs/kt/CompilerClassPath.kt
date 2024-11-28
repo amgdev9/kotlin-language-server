@@ -60,7 +60,6 @@ class CompilerClassPath: Closeable {
                 classPath.asSequence().map { it.compiledJar }.toSet(),
                 outputDirectory
             )
-            updateCompilerConfiguration()
         }
 
         return refreshCompiler
@@ -76,10 +75,6 @@ class CompilerClassPath: Closeable {
 
         dest.removeAll(removed)
         dest.addAll(added)
-    }
-
-    fun updateCompilerConfiguration() {
-        compiler.updateConfiguration()
     }
 
     fun setupWorkspaceRoot(): Boolean {

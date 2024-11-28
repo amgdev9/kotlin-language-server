@@ -84,7 +84,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             config = config,
             projectClasspath = loadClasspathFromDisk(root)
         )
-        clientSession.classPath.compiler.updateConfiguration()
 
         LOG.info("Workspace folder {}", folder.name)
 

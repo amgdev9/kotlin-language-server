@@ -50,6 +50,7 @@ class CompilationEnvironment(
             put(CommonConfigurationKeys.LANGUAGE_VERSION_SETTINGS, languageVersionSettings)
             put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY, LoggingMessageCollector)
             put(JVMConfigurationKeys.USE_PSI_CLASS_FILES_READING, true)
+            put(JVMConfigurationKeys.JVM_TARGET, JvmTarget.JVM_21)    // TODO Make this version configurable by build system
 
             // configure jvm runtime classpaths
             configureJdkClasspathRoots()
@@ -64,10 +65,6 @@ class CompilationEnvironment(
         },
         configFiles = EnvironmentConfigFiles.JVM_CONFIG_FILES
     )
-
-    fun updateConfiguration() {
-        environment.configuration.put(JVMConfigurationKeys.JVM_TARGET, JvmTarget.JVM_21)    // TODO Make this version configurable by build system
-    }
 
     fun createContainer(sourcePath: Collection<KtFile>): Pair<ComponentProvider, BindingTraceContext> {
         val trace = CliBindingTrace(environment.project)
