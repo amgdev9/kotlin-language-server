@@ -1,6 +1,5 @@
 package org.javacs.kt
 
-import org.javacs.kt.util.AsyncExecutor
 import java.io.Closeable
 import java.io.File
 import java.nio.file.Files
@@ -25,8 +24,6 @@ class CompilerClassPath: Closeable {
     )
         private set
 
-    private val async = AsyncExecutor()
-
     /** Updates and possibly reinstantiates the compiler using new paths. */
     private fun refresh(
         updateClassPath: Boolean = true,
@@ -42,13 +39,6 @@ class CompilerClassPath: Closeable {
                     syncPaths(classPath, projectClasspath.classPath, "class path")
                 }
                 refreshCompiler = true
-            }
-
-            async.compute {
-                val newClassPathWithSources = projectClasspath
-                synchronized(classPath) {
-                    syncPaths(classPath, newClassPathWithSources.classPath, "class path with sources")
-                }
             }
         }
 
