@@ -8,7 +8,11 @@ import java.nio.file.Paths
  */
 fun contentOf(uri: URI): String = when (uri.scheme) {
     "file" -> Paths.get(uri).toFile().readText()
-    "kls" -> uri.toKlsURI()?.let { classContentOf(it).second }
-        ?: throw RuntimeException("Could not find $uri")
+    "kls" -> {
+        val klsUri = uri.toKlsURI()
+        if (klsUri == null) throw RuntimeException("Could not find $uri")
+
+        classContentOf(klsUri).second
+    }
     else -> throw RuntimeException("Unrecognized scheme ${uri.scheme}")
 }
