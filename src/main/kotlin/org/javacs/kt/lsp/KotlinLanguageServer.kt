@@ -27,10 +27,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
     private val async = AsyncExecutor()
 
-    companion object {
-        const val VERSION = "1.0.0"
-    }
-
     override fun connect(client: LanguageClient) {
         this.client = client
     }
@@ -66,8 +62,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
  
         val clientCapabilities = params.capabilities
         val config = Configuration()
-        config.completion.snippets.enabled =
-            clientCapabilities?.textDocument?.completion?.completionItem?.snippetSupport == true
 
         if (clientCapabilities?.textDocument?.rename?.prepareSupport == true) {
             serverCapabilities.renameProvider = Either.forRight(RenameOptions(false))
@@ -75,9 +69,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
         // Get root folder
         val folders = params.workspaceFolders
-        if(folders.isEmpty()) {
-            throw RuntimeException("No workspace folders specified!")
-        }
         val folder = folders.first()
         val root = Paths.get(parseURI(folder.uri))
 
@@ -95,10 +86,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
         )
         clientSession.classPath.compiler.updateConfiguration()
 
-        if (folders.size > 1) {
-            LOG.info("Detected ${folders.size} workspace folders, picking the first one...")
-        }
-
         LOG.info("Workspace folder {}", folder.name)
 
         clientSession.sourceFiles.setupWorkspaceRoot()
@@ -115,8 +102,9 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
         // TODO Optimize this mess
         textDocuments.lintAll()
 
-        val serverInfo = ServerInfo("Kotlin Language Server", VERSION)
-        LOG.info("Kotlin Language Server: Version $VERSION")
+        val serverInfo = ServerInfo("Kotlin Language Server", "1.0.0")
+        LOG.info("Initialization done")
+        LOG.info("-------------------")
         InitializeResult(serverCapabilities, serverInfo)
     }
 

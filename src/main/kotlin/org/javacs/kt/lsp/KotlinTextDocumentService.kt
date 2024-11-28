@@ -97,7 +97,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
         val (file, cursor) = recover(position)
             ?: return@compute Either.forRight(CompletionList()) // TODO: Investigate when to recompile
-        val completions = completions(file, cursor, clientSession.config.completion)
+        val completions = completions(file, cursor)
         LOG.info("Found {} items", completions.items.size)
 
         Either.forRight(completions)

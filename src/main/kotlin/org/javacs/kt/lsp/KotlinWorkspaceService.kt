@@ -42,21 +42,7 @@ class KotlinWorkspaceService: WorkspaceService, LanguageClientAware {
     override fun didChangeConfiguration(params: DidChangeConfigurationParams) {
         val settings = params.settings as? JsonObject
         settings?.get("kotlin")?.asJsonObject?.apply {
-            // Update deprecated configuration keys
             val config = clientSession.config
-            get("snippetsEnabled")?.asBoolean?.let { config.completion.snippets.enabled = it }
-
-            // Update compiler options
-            get("compiler")?.asJsonObject?.apply {
-                val compiler = config.compiler
-                get("jvm")?.asJsonObject?.apply {
-                    val jvm = compiler.jvm
-                    get("target")?.asString?.let {
-                        jvm.target = it
-                        clientSession.classPath.updateCompilerConfiguration()
-                    }
-                }
-            }
 
             // Update options for inlay hints
             get("inlayHints")?.asJsonObject?.apply {
@@ -70,15 +56,6 @@ class KotlinWorkspaceService: WorkspaceService, LanguageClientAware {
             get("codegen")?.asJsonObject?.apply {
                 val codegen = config.codegen
                 get("enabled")?.asBoolean?.let { codegen.enabled = it }
-            }
-
-            // Update code-completion options
-            get("completion")?.asJsonObject?.apply {
-                val completion = config.completion
-                get("snippets")?.asJsonObject?.apply {
-                    val snippets = completion.snippets
-                    get("enabled")?.asBoolean?.let { snippets.enabled = it }
-                }
             }
 
             // Update options about external sources e.g. JAR files, decompilers, etc
@@ -95,9 +72,5 @@ class KotlinWorkspaceService: WorkspaceService, LanguageClientAware {
         val result = workspaceSymbols(params.query, clientSession.sourcePath)
 
         return CompletableFuture.completedFuture(Either.forRight(result))
-    }
-
-    override fun didChangeWorkspaceFolders(params: DidChangeWorkspaceFoldersParams) {
-        // Not supporting this, just single workspace folder support
     }
 }

@@ -6,17 +6,11 @@ import org.eclipse.lsp4j.CompletionItemKind
 import org.eclipse.lsp4j.CompletionItemTag
 import org.eclipse.lsp4j.CompletionList
 import org.javacs.kt.CompiledFile
-import org.javacs.kt.Configuration
 import org.javacs.kt.LOG
 import org.javacs.kt.actions.getImportTextEditEntry
 import org.javacs.kt.index.Symbol
 import org.javacs.kt.index.queryIndex
-import org.javacs.kt.util.containsCharactersInOrder
-import org.javacs.kt.util.findParent
-import org.javacs.kt.util.noResult
-import org.javacs.kt.util.onEachIndexed
-import org.javacs.kt.util.stringDistance
-import org.javacs.kt.util.toPath
+import org.javacs.kt.util.*
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.js.resolve.diagnostics.findPsi
@@ -29,7 +23,6 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.*
-import org.jetbrains.kotlin.psi.psiUtil.parentsWithSelf
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.descriptorUtil.*
@@ -53,11 +46,11 @@ private const val MAX_COMPLETION_ITEMS = 75
 private const val MIN_SORT_LENGTH = 3
 
 /** Finds completions at the specified position. */
-fun completions(file: CompiledFile, cursor: Int, config: Configuration.Completion): CompletionList {
+fun completions(file: CompiledFile, cursor: Int): CompletionList {
     val partial = findPartialIdentifier(file, cursor)
     LOG.debug("Looking for completions that match '{}'", partial)
 
-    val (elementItems, element) = elementCompletionItems(file, cursor, config, partial)
+    val (elementItems, element) = elementCompletionItems(file, cursor, partial)
     val elementItemList = elementItems.toList()
     val elementItemLabels = elementItemList.mapNotNull { it.label }.toSet()
 
@@ -154,7 +147,7 @@ private fun keywordCompletionItems(partial: String): Sequence<CompletionItem> =
 data class ElementCompletionItems(val items: Sequence<CompletionItem>, val element: KtElement? = null)
 
 /** Finds completions based on the element around the user's cursor. */
-private fun elementCompletionItems(file: CompiledFile, cursor: Int, config: Configuration.Completion, partial: String): ElementCompletionItems {
+private fun elementCompletionItems(file: CompiledFile, cursor: Int, partial: String): ElementCompletionItems {
     val (surroundingElement, isGlobal) = completableElement(file, cursor) ?: return ElementCompletionItems(emptySequence())
     val completions = elementCompletions(file, cursor, surroundingElement, isGlobal)
         .applyIf(isGlobal) { filter { declarationIsInfix(it) } }
@@ -165,22 +158,21 @@ private fun elementCompletionItems(file: CompiledFile, cursor: Int, config: Conf
         ?: completions.sortedBy { if (name(it).startsWith(partial)) 0 else 1 }
     val visible = sorted.filter(isVisible(file, cursor))
 
-    return ElementCompletionItems(visible.map { completionItem(it, surroundingElement, file, config) }, surroundingElement)
+    return ElementCompletionItems(visible.map { completionItem(it, surroundingElement, file) }, surroundingElement)
 }
 
 private val callPattern = Regex("(.*)\\((?:\\$\\d+)?\\)(?:\\$0)?")
 private val methodSignature = Regex("""(?:fun|constructor) (?:<(?:[a-zA-Z\?\!\: ]+)(?:, [A-Z])*> )?([a-zA-Z]+\(.*\))""")
 
-private fun completionItem(d: DeclarationDescriptor, surroundingElement: KtElement, file: CompiledFile, config: Configuration.Completion): CompletionItem {
-    val renderWithSnippets = config.snippets.enabled
-        && surroundingElement !is KtCallableReferenceExpression
+private fun completionItem(decl: DeclarationDescriptor, surroundingElement: KtElement, file: CompiledFile): CompletionItem {
+    val renderWithSnippets = surroundingElement !is KtCallableReferenceExpression
         && surroundingElement !is KtImportDirective
-    val result = d.accept(RenderCompletionItem(renderWithSnippets), null)
+    val result = decl.accept(RenderCompletionItem(renderWithSnippets), null)
 
     result.label = methodSignature.find(result.detail)?.groupValues?.get(1) ?: result.label
 
-    if (isNotStaticJavaMethod(d) && (isGetter(d) || isSetter(d))) {
-        val name = extractPropertyName(d)
+    if (isNotStaticJavaMethod(decl) && (isGetter(decl) || isSetter(decl))) {
+        val name = extractPropertyName(decl)
 
         result.detail += " (from ${result.label})"
         result.label = name
@@ -188,7 +180,7 @@ private fun completionItem(d: DeclarationDescriptor, surroundingElement: KtEleme
         result.filterText = name
     }
 
-    if (KotlinBuiltIns.isDeprecated(d)) {
+    if (KotlinBuiltIns.isDeprecated(decl)) {
         result.tags = listOf(CompletionItemTag.Deprecated)
     }
 

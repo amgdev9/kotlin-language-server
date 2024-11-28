@@ -18,111 +18,16 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.net.URI
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.sequences.plus
+import kotlin.sequences.toList
 
 class SourcePath {
     private val files = mutableMapOf<URI, SourceFile>()
-    private val parseDataWriteLock = ReentrantLock()
+    val parseDataWriteLock = ReentrantLock()
 
     private val indexAsync = AsyncExecutor()
 
     var beforeCompileCallback: () -> Unit = {}
-
-    private inner class SourceFile(
-        val uri: URI,
-        var content: String,
-        val path: Path? = uri.filePath,
-        var parsed: KtFile? = null,
-        var compiledFile: KtFile? = null,
-        var compiledContext: BindingContext? = null,
-        var module: ModuleDescriptor? = null,
-        val language: Language? = null,
-        val isTemporary: Boolean = false, // A temporary source file will not be returned by .all()
-        var lastSavedFile: KtFile? = null,
-    ) {
-        val extension: String? =
-            uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
-
-        fun put(newContent: String) {
-            content = newContent
-        }
-
-        fun clean() {
-            parsed = null
-            compiledFile = null
-            compiledContext = null
-            module = null
-        }
-
-        fun parse() {
-            // TODO: Create PsiFile using the stored language instead
-            parsed = clientSession.classPath.compiler.createKtFile(
-                content,
-                path ?: Paths.get("sourceFile.virtual.$extension")
-            )
-        }
-
-        fun parseIfChanged() {
-            if (content != parsed?.text) {
-                parse()
-            }
-        }
-
-        fun compileIfNull() = parseIfChanged().apply { doCompileIfNull() }
-
-        private fun doCompileIfNull() {
-            if (compiledFile == null) {
-                doCompileIfChanged()
-            }
-        }
-
-        fun compileIfChanged() = parseIfChanged().apply { doCompileIfChanged() }
-
-        fun compile() = parse().apply { doCompile() }
-
-        private fun doCompile() {
-            LOG.debug("Compiling {}", path?.fileName)
-
-            val oldFile = clone()
-
-            val (context, module) = clientSession.classPath.compiler.compileKtFile(parsed!!, allIncludingThis())
-            parseDataWriteLock.withLock {
-                compiledContext = context
-                this.module = module
-                compiledFile = parsed
-            }
-
-            refreshWorkspaceIndexes(listOfNotNull(oldFile), listOfNotNull(this))
-        }
-
-        private fun doCompileIfChanged() {
-            if (parsed?.text != compiledFile?.text) {
-                doCompile()
-            }
-        }
-
-        fun prepareCompiledFile(): CompiledFile =
-            parseIfChanged().apply { compileIfNull() }.let { doPrepareCompiledFile() }
-
-        private fun doPrepareCompiledFile(): CompiledFile =
-            CompiledFile(
-                content,
-                compiledFile!!,
-                compiledContext!!,
-                module!!,
-                allIncludingThis(),
-                clientSession.classPath,
-                false
-            )
-
-        private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
-            if (isTemporary) (all().asSequence() + sequenceOf(parsed!!)).toList()
-            else all()
-        }
-
-        // Creates a shallow copy
-        fun clone(): SourceFile =
-            SourceFile(uri, content, path, parsed, compiledFile, compiledContext, module, language, isTemporary)
-    }
 
     private fun sourceFile(uri: URI): SourceFile {
         if (uri !in files) {
@@ -293,7 +198,7 @@ class SourcePath {
     /**
      * Refreshes the indexes. If already done, refreshes only the declarations in the files that were changed.
      */
-    private fun refreshWorkspaceIndexes(oldFiles: List<SourceFile>, newFiles: List<SourceFile>) = indexAsync.execute {
+    fun refreshWorkspaceIndexes(oldFiles: List<SourceFile>, newFiles: List<SourceFile>) = indexAsync.execute {
         val oldDeclarations = getDeclarationDescriptors(oldFiles)
         val newDeclarations = getDeclarationDescriptors(newFiles)
 
