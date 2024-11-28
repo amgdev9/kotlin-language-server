@@ -37,7 +37,7 @@ fun loadClasspathFromDisk(rootPath: Path): ProjectClasspath {
         } else if(type == "kotlin-lsp-sourcedir-kotlin") {
             kotlinSourceDirs.add(Paths.get(path))
         } else if(type == "kotlin-lsp-gradle" && path.endsWith(".jar") || Files.isDirectory(Path.of(path))) {
-            classpath.add(ClassPathEntry(Paths.get(path), null))
+            classpath.add(ClassPathEntry(Paths.get(path), null))    // TODO Add sources if available
         }
     }
 
