@@ -33,9 +33,8 @@ class CompilationEnvironment(
 ) : Closeable {
     private val disposable = Disposer.newDisposable()
 
-    val environment: KotlinCoreEnvironment = KotlinCoreEnvironment.createForProduction(
+    val environment = KotlinCoreEnvironment.createForProduction(
         projectDisposable = disposable,
-        // Not to be confused with the CompilerConfiguration in the language server Configuration
         configuration = KotlinCompilerConfiguration().apply {
             val langFeatures = mutableMapOf<LanguageFeature, LanguageFeature.State>()
             for (langFeature in LanguageFeature.entries) {
@@ -66,13 +65,7 @@ class CompilationEnvironment(
         },
         configFiles = EnvironmentConfigFiles.JVM_CONFIG_FILES
     )
-    val parser: KtPsiFactory
-
-    init {
-        val project = environment.project
-        parser = KtPsiFactory(project)
-    }
-
+    
     fun updateConfiguration() {
         environment.configuration.put(JVMConfigurationKeys.JVM_TARGET, JvmTarget.JVM_21)    // TODO Make this version configurable by build system
     }
