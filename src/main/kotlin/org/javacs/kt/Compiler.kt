@@ -62,7 +62,8 @@ class Compiler(
     fun createPsiFile(content: String, file: Path = Paths.get("dummy.virtual.kt"), language: Language = KotlinLanguage.INSTANCE): PsiFile {
         assert(!content.contains('\r'))
 
-        val new = psiFileFactory().createFileFromText(file.toString(), language, content, true, false)
+        val psiFileFactory = PsiFileFactory.getInstance(defaultCompileEnvironment.environment.project)
+        val new = psiFileFactory.createFileFromText(file.toString(), language, content, true, false)
         assert(new.virtualFile != null)
 
         return new
@@ -70,9 +71,6 @@ class Compiler(
 
     fun createKtFile(content: String, file: Path = Paths.get("dummy.virtual.kt")): KtFile =
         createPsiFile(content, file, language = KotlinLanguage.INSTANCE) as KtFile
-
-    fun psiFileFactory(): PsiFileFactory =
-        PsiFileFactory.getInstance(defaultCompileEnvironment.environment.project)
 
     fun compileKtFile(file: KtFile, sourcePath: Collection<KtFile>): Pair<BindingContext, ModuleDescriptor> =
         compileKtFiles(listOf(file), sourcePath)

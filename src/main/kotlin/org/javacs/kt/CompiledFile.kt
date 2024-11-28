@@ -29,8 +29,7 @@ class CompiledFile(
     val compile: BindingContext,
     val module: ModuleDescriptor,
     val sourcePath: Collection<KtFile>,
-    val classPath: CompilerClassPath,
-    val isScript: Boolean = false
+    val classPath: CompilerClassPath
 ) {
     /**
      * Find the type of the expression at `cursor`
@@ -121,7 +120,7 @@ class CompiledFile(
 
         val (surroundingContent, offset) = contentAndOffsetFromElement(psi, oldParent, asReference)
         val padOffset = " ".repeat(offset)
-        val recompile = classPath.compiler.createKtFile(padOffset + surroundingContent, Paths.get("dummy.virtual" + if (isScript) ".kts" else ".kt"))
+        val recompile = classPath.compiler.createKtFile(padOffset + surroundingContent, Paths.get("dummy.virtual.kt"))
         return recompile.findElementAt(cursor)?.findParent<KtElement>()
     }
 

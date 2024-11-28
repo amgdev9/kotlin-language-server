@@ -94,8 +94,7 @@ class SourceFile(
             compiledContext!!,
             module!!,
             allIncludingThis(),
-            clientSession.classPath,
-            false
+            clientSession.classPath
         )
 
     private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
