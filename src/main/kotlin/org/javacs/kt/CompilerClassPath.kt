@@ -7,6 +7,8 @@ import java.nio.file.Path
 import kotlin.io.path.extension
 import kotlin.streams.asSequence
 
+val javaHome: String? = System.getProperty("java.home", null)
+
 /**
  * Manages the class path (compiled JARs, etc), the Java source path
  * and the compiler. Note that Kotlin sources are stored in SourcePath.
@@ -15,7 +17,6 @@ class CompilerClassPath: Closeable {
     private val javaSourcePath = mutableSetOf<Path>()
     val classPath = mutableSetOf<ClassPathEntry>()
     val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
-    val javaHome: String? = System.getProperty("java.home", null)
 
     var compiler = Compiler(
         javaSourcePath,
@@ -26,53 +27,45 @@ class CompilerClassPath: Closeable {
 
     /** Updates and possibly reinstantiates the compiler using new paths. */
     private fun refresh(
-        updateClassPath: Boolean = true,
-        updateJavaSourcePath: Boolean = true
-    ): Boolean {
-        // TODO: Fetch class path concurrently (and asynchronously)
-        var refreshCompiler = updateJavaSourcePath
+        updateClassPath: Boolean
+    ) {
         val projectClasspath = clientSession.projectClasspath
 
         if (updateClassPath) {
             if (projectClasspath.classPath != classPath) {
                 synchronized(classPath) {
-                    syncPaths(classPath, projectClasspath.classPath, "class path")
+                    syncPaths(classPath, projectClasspath.classPath)
                 }
-                refreshCompiler = true
             }
         }
 
-        if (refreshCompiler) {
-            LOG.info("Reinstantiating compiler")
-            compiler.close()
-            compiler = Compiler(
-                javaSourcePath,
-                classPath.asSequence().map { it.compiledJar }.toSet(),
-                outputDirectory
-            )
-        }
-
-        return refreshCompiler
+        LOG.info("Reinstantiating compiler")
+        compiler.close()
+        compiler = Compiler(
+            javaSourcePath,
+            classPath.asSequence().map { it.compiledJar }.toSet(),
+            outputDirectory
+        )
     }
 
     /** Synchronizes the given two path sets and logs the differences. */
-    private fun <T> syncPaths(dest: MutableSet<T>, new: Set<T>, name: String) {
+    private fun <T> syncPaths(dest: MutableSet<T>, new: Set<T>) {
         val added = new - dest
         val removed = dest - new
 
-        LOG.info("Adding {} files to {}", added.size, name)
-        LOG.info("Removing {} files from {}", removed.size, name)
+        LOG.info("Adding {} files to {} class path", added.size)
+        LOG.info("Removing {} files from {} class path", removed.size)
 
         dest.removeAll(removed)
         dest.addAll(added)
     }
 
-    fun setupWorkspaceRoot(): Boolean {
+    fun setupWorkspaceRoot() {
         LOG.info("Searching for dependencies and Java sources...")
 
         javaSourcePath.addAll(findJavaSourceFiles(clientSession.projectClasspath.javaSourceDirs))
 
-        return refresh()
+        refresh(true)
     }
 
     private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
@@ -101,10 +94,10 @@ class CompilerClassPath: Closeable {
         val javaSource = isJavaSource(file)
         if (!javaSource) return false
 
-        return refresh(
-            updateClassPath = false,
-            updateJavaSourcePath = true
+        refresh(
+            updateClassPath = false
         )
+        return true
     }
 
     private fun isJavaSource(file: Path): Boolean = file.fileName.toString().endsWith(".java")

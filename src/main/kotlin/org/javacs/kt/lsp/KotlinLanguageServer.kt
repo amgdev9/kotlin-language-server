@@ -42,7 +42,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
                 supported = true
                 changeNotifications = Either.forRight(true)
             }
-            inlayHintProvider = Either.forLeft(true)
+            inlayHintProvider = Either.forLeft(false)
             hoverProvider = Either.forLeft(true)
             renameProvider = Either.forLeft(true)
             completionProvider = CompletionOptions(false, listOf("."))
@@ -59,7 +59,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             executeCommandProvider = ExecuteCommandOptions()
             documentHighlightProvider = Either.forLeft(true)
         }
- 
+
         val clientCapabilities = params.capabilities
 
         if (clientCapabilities?.textDocument?.rename?.prepareSupport == true) {
@@ -88,13 +88,12 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
         // Here starts the project load
         clientSession.sourceFiles.setupWorkspaceRoot()
 
-        // This reinstantiates the compiler if classpath has changed
-        val refreshedCompiler = clientSession.classPath.setupWorkspaceRoot()
-        if (refreshedCompiler) {
-            // Recompiles all source files, updating the index
-            // TODO Is this needed?
-            clientSession.sourcePath.refresh()
-        }
+        // This reinstantiates the compiler
+        clientSession.classPath.setupWorkspaceRoot()
+
+        // Recompiles all source files, updating the index
+        // TODO Is this needed?
+        clientSession.sourcePath.refresh()
 
         // This compiles all the files twice and updates the index twice
         // TODO Optimize this mess

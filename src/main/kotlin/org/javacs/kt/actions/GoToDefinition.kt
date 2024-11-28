@@ -18,11 +18,7 @@ import java.nio.file.Paths
 private val cachedTempFiles = mutableMapOf<KlsURI, Path>()
 private val definitionPattern = Regex("(?:class|interface|object|fun)\\s+(\\w+)")
 
-fun goToDefinition(
-    file: CompiledFile,
-    cursor: Int,
-    classPath: CompilerClassPath
-): Location? {
+fun goToDefinition(file: CompiledFile, cursor: Int): Location? {
     val (_, target) = file.referenceExpressionAtPoint(cursor) ?: return null
 
     LOG.info("Found declaration descriptor {}", target)
@@ -36,7 +32,7 @@ fun goToDefinition(
     if (destination != null) {
         val rawClassURI = destination.uri
 
-        if (isInsideArchive(rawClassURI, classPath)) {
+        if (isInsideArchive(rawClassURI)) {
             parseURI(rawClassURI).toKlsURI()?.let { klsURI ->
                 val (klsSourceURI, content) = classContentOf(klsURI)
 
@@ -71,7 +67,7 @@ fun goToDefinition(
     return destination
 }
 
-private fun isInsideArchive(uri: String, classPath: CompilerClassPath) =
-    uri.contains(".jar!") || uri.contains(".zip!") || classPath.javaHome?.let {
+private fun isInsideArchive(uri: String) =
+    uri.contains(".jar!") || uri.contains(".zip!") || javaHome?.let {
         Paths.get(parseURI(uri)).toString().startsWith(File(it).path)
     } == true

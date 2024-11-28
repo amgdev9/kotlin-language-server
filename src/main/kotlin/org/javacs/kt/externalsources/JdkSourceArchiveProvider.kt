@@ -1,6 +1,6 @@
 package org.javacs.kt.externalsources
 
-import org.javacs.kt.clientSession
+import org.javacs.kt.javaHome
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -12,7 +12,6 @@ import java.nio.file.Paths
  * TODO: improve this resolution logic to work for older JDK versions as well.
  */
 fun fetchJdkSourceArchive(compiledArchive: Path): Path? {
-    val javaHome = clientSession.classPath.javaHome
     if (javaHome == null) return null
 
     val javaHomePath = File(javaHome).toPath()

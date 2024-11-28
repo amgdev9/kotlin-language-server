@@ -42,10 +42,6 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         codeActions(file, params.range, params.context)
     }
 
-    override fun inlayHint(params: InlayHintParams): CompletableFuture<List<InlayHint>> = async.compute {
-        return@compute emptyList()
-    }
-
     override fun hover(position: HoverParams): CompletableFuture<Hover?> = async.compute {
         LOG.info("Hovering at {}", describePosition(position))
 
@@ -62,14 +58,11 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         LOG.info("Go-to-definition at {}", describePosition(position))
 
         val (file, cursor) = recover(position) ?: return@compute Either.forLeft(emptyList())
-        goToDefinition(
-            file,
-            cursor,
-            clientSession.classPath
-        )
-            ?.let(::listOf)
-            ?.let { Either.forLeft<List<Location>, List<LocationLink>>(it) }
-            ?: noResult("Couldn't find definition at ${describePosition(position)}", Either.forLeft(emptyList()))
+
+        val location = goToDefinition(file, cursor)
+        if(location == null) return@compute noResult("Couldn't find definition at ${describePosition(position)}", Either.forLeft(emptyList()))
+
+        return@compute Either.forLeft<List<Location>, List<LocationLink>>(listOf(location))
     }
 
     override fun codeLens(params: CodeLensParams): CompletableFuture<List<CodeLens>> {

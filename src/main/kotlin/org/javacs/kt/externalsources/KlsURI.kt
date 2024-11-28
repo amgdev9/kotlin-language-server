@@ -24,9 +24,7 @@ fun URI.toKlsURI(): KlsURI? = when (scheme) {
  * Resource Identifier (URI) with a "kls" (Kotlin language server) scheme.
  * The URI should be structured as follows:
  *
- * <p><pre>
  * kls:file:///path/to/jarFile.jar!/path/to/jvmClass.class
- * </pre></p>
  *
  * Other file extensions for classes (such as .kt and .java) are supported too, in
  * which case the file will directly be used without invoking the decompiler.
@@ -59,15 +57,9 @@ data class KlsURI(val fileUri: URI, val query: Map<QueryParam, String>) {
 
     private val archiveType: ArchiveType
         get() = when {
-            fileUri.schemeSpecificPart.contains("!/modules") -> {
-                ArchiveType.JDK
-            }
-            fileUri.schemeSpecificPart.contains(".zip!") -> {
-                ArchiveType.ZIP
-            }
-            else -> {
-                ArchiveType.JAR
-            }
+            fileUri.schemeSpecificPart.contains("!/modules") -> ArchiveType.JDK
+            fileUri.schemeSpecificPart.contains(".zip!") -> ArchiveType.ZIP
+            else -> ArchiveType.JAR
         }
 
     val archivePath: Path
