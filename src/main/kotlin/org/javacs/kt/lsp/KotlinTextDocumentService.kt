@@ -25,35 +25,25 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     private val TextDocumentIdentifier.filePath: Path?
         get() = parseURI(uri).filePath
 
-    private enum class Recompile {
-        ALWAYS, AFTER_DOT, NEVER
-    }
-
     private fun recover(position: TextDocumentPositionParams): Pair<CompiledFile, Int>? {
-        return recover(position.textDocument.uri, position.position, Recompile.NEVER)
+        return recover(position.textDocument.uri, position.position)
     }
 
-    private fun recover(uriString: String, position: Position, recompile: Recompile): Pair<CompiledFile, Int>? {
+    private fun recover(uriString: String, position: Position): Pair<CompiledFile, Int>? {
         val uri = parseURI(uriString)
         val content = clientSession.sourcePath.content(uri)
         val offset = offset(content, position.line, position.character)
-        val shouldRecompile = when (recompile) {
-            Recompile.ALWAYS -> true
-            Recompile.AFTER_DOT -> offset > 0 && content[offset - 1] == '.'
-            Recompile.NEVER -> false
-        }
-        val compiled = if (shouldRecompile) clientSession.sourcePath.currentVersion(uri) else clientSession.sourcePath.latestCompiledVersion(uri)
+        val compiled = clientSession.sourcePath.latestCompiledVersion(uri)
         return Pair(compiled, offset)
     }
 
     override fun codeAction(params: CodeActionParams): CompletableFuture<List<Either<Command, CodeAction>>> = async.compute {
-        val (file, _) = recover(params.textDocument.uri, params.range.start, Recompile.NEVER) ?: return@compute emptyList()
+        val (file, _) = recover(params.textDocument.uri, params.range.start) ?: return@compute emptyList()
         codeActions(file, params.range, params.context)
     }
 
     override fun inlayHint(params: InlayHintParams): CompletableFuture<List<InlayHint>> = async.compute {
-        val (file, _) = recover(params.textDocument.uri, params.range.start, Recompile.ALWAYS) ?: return@compute emptyList()
-        provideHints(file, clientSession.config.inlayHints)
+        return@compute emptyList()
     }
 
     override fun hover(position: HoverParams): CompletableFuture<Hover?> = async.compute {
@@ -64,7 +54,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     }
 
     override fun documentHighlight(position: DocumentHighlightParams): CompletableFuture<List<DocumentHighlight>> = async.compute {
-        val (file, cursor) = recover(position.textDocument.uri, position.position, Recompile.NEVER) ?: return@compute emptyList()
+        val (file, cursor) = recover(position.textDocument.uri, position.position) ?: return@compute emptyList()
         documentHighlightsAt(file, cursor)
     }
 
@@ -75,7 +65,6 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         goToDefinition(
             file,
             cursor,
-            clientSession.config.externalSources,
             clientSession.classPath
         )
             ?.let(::listOf)

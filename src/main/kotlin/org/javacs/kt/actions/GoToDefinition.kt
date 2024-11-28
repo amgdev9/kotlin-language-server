@@ -21,7 +21,6 @@ private val definitionPattern = Regex("(?:class|interface|object|fun)\\s+(\\w+)"
 fun goToDefinition(
     file: CompiledFile,
     cursor: Int,
-    config: Configuration.ExternalSources,
     classPath: CompilerClassPath
 ): Location? {
     val (_, target) = file.referenceExpressionAtPoint(cursor) ?: return null
@@ -41,26 +40,18 @@ fun goToDefinition(
             parseURI(rawClassURI).toKlsURI()?.let { klsURI ->
                 val (klsSourceURI, content) = classContentOf(klsURI)
 
-                destination.uri = if (config.useKlsScheme) {
-                    // Defer decompilation until a jarClassContents request is sent
-                    klsSourceURI.toString()
-                } else {
-                    // Return the path to a temporary file
-                    // since the client has not opted into
-                    // or does not support KLS URIs
-                    val tmpFile = cachedTempFiles[klsSourceURI] ?: run {
-                        val name = klsSourceURI.fileName.partitionAroundLast(".").first
-                        val extensionWithoutDot = klsSourceURI.fileExtension
-                        val extension = if (extensionWithoutDot != null) ".$extensionWithoutDot" else ""
-                        clientSession.tempFolder.createTempFile(name, extension)
-                            .also {
-                                it.toFile().writeText(content)
-                                cachedTempFiles[klsSourceURI] = it
-                            }
-                    }
-
-                    tmpFile.toUri().toString()
+                val tmpFile = cachedTempFiles[klsSourceURI] ?: run {
+                    val name = klsSourceURI.fileName.partitionAroundLast(".").first
+                    val extensionWithoutDot = klsSourceURI.fileExtension
+                    val extension = if (extensionWithoutDot != null) ".$extensionWithoutDot" else ""
+                    clientSession.tempFolder.createTempFile(name, extension)
+                        .also {
+                            it.toFile().writeText(content)
+                            cachedTempFiles[klsSourceURI] = it
+                        }
                 }
+
+                destination.uri =   tmpFile.toUri().toString()
 
                 if (destination.range.isZero) {
                     // Try to find the definition inside the source directly

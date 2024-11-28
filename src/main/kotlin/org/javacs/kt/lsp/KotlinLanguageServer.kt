@@ -61,7 +61,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
         }
  
         val clientCapabilities = params.capabilities
-        val config = Configuration()
 
         if (clientCapabilities?.textDocument?.rename?.prepareSupport == true) {
             serverCapabilities.renameProvider = Either.forRight(RenameOptions(false))
@@ -81,7 +80,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             decompilerOutputDir = createDecompilerOutputDirectory(),
             sourcePath = SourcePath(),
             sourceFiles = SourceFiles(),
-            config = config,
             projectClasspath = loadClasspathFromDisk(root)
         )
 
