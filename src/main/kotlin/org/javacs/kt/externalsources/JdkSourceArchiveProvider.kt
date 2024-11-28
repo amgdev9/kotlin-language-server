@@ -12,11 +12,11 @@ import java.nio.file.Paths
  * TODO: improve this resolution logic to work for older JDK versions as well.
  */
 fun fetchJdkSourceArchive(compiledArchive: Path): Path? {
-    clientSession.classPath.javaHome?.let {
-        val javaHomePath = File(it).toPath()
-        if (compiledArchive == javaHomePath) {
-            return Paths.get(compiledArchive.toString(), "lib", "src.zip")
-        }
-    }
-    return null
+    val javaHome = clientSession.classPath.javaHome
+    if (javaHome == null) return null
+
+    val javaHomePath = File(javaHome).toPath()
+    if (compiledArchive != javaHomePath) return null
+
+    return Paths.get(compiledArchive.toString(), "lib", "src.zip")
 }

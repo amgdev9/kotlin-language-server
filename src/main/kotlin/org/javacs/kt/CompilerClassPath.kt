@@ -1,6 +1,5 @@
 package org.javacs.kt
 
-import org.javacs.kt.classpath.*
 import org.javacs.kt.util.AsyncExecutor
 import java.io.Closeable
 import java.io.File
@@ -35,18 +34,18 @@ class CompilerClassPath: Closeable {
     ): Boolean {
         // TODO: Fetch class path concurrently (and asynchronously)
         var refreshCompiler = updateJavaSourcePath
+        val projectInfo = getGradleProjectInfo()
 
         if (updateClassPath) {
-            val newClassPath = getClasspathOrEmpty()
-            if (newClassPath.classPath != classPath) {
+            if (projectInfo.classPath != classPath) {
                 synchronized(classPath) {
-                    syncPaths(classPath, newClassPath.classPath, "class path")
+                    syncPaths(classPath, projectInfo.classPath, "class path")
                 }
                 refreshCompiler = true
             }
 
             async.compute {
-                val newClassPathWithSources = getClasspathWithSources()
+                val newClassPathWithSources = projectInfo
                 synchronized(classPath) {
                     syncPaths(classPath, newClassPathWithSources.classPath, "class path with sources")
                 }

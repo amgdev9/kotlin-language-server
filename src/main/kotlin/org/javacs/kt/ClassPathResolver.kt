@@ -1,11 +1,14 @@
-package org.javacs.kt.classpath
+package org.javacs.kt
 
-import org.javacs.kt.LOG
-import org.javacs.kt.clientSession
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+
+data class ClassPathEntry(
+    val compiledJar: Path,
+    val sourceJar: Path? = null
+)
 
 data class GradleProjectInfo(
     val classPath: Set<ClassPathEntry>,
@@ -34,8 +37,6 @@ private fun getBuildGradleFile(workspaceRoot: Path): Path? {
 
     return null
 }
-
-fun getGradleCurrentBuildFileVersion(path: Path) = path.toFile().lastModified()
 
 private fun readDependenciesViaGradleCLI(projectDirectory: Path): GradleProjectInfo {
     LOG.info(

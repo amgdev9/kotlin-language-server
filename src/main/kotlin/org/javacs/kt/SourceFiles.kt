@@ -3,7 +3,6 @@ package org.javacs.kt
 import com.intellij.lang.Language
 import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
-import org.javacs.kt.classpath.GradleProjectInfo
 import org.javacs.kt.externalsources.contentOf
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.filePath

@@ -7,7 +7,7 @@ import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.LanguageServer
 import org.javacs.kt.*
 import org.javacs.kt.actions.semanticTokensLegend
-import org.javacs.kt.classpath.getGradleProjectInfo
+import org.javacs.kt.getGradleProjectInfo
 import org.javacs.kt.db.setupDB
 import org.javacs.kt.externalsources.createDecompilerOutputDirectory
 import org.javacs.kt.util.AsyncExecutor

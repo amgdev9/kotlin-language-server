@@ -68,40 +68,11 @@ class PositionEntity(id: EntityID<Int>) : IntEntity(id) {
     var character by Positions.character
 }
 
-// Cached classpath
-const val MAX_PATH_LENGTH = 2047
-
-object ClassPathMetadataCache : IntIdTable() {
-    val includesSources = bool("includessources")
-    val buildFileVersion = long("buildfileversion").nullable()
-}
-
-object ClassPathCacheEntry : IntIdTable() {
-    val compiledJar = varchar("compiledjar", length = MAX_PATH_LENGTH)
-    val sourceJar = varchar("sourcejar", length = MAX_PATH_LENGTH).nullable()
-}
-
-class ClassPathMetadataCacheEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<ClassPathMetadataCacheEntity>(ClassPathMetadataCache)
-
-    var includesSources by ClassPathMetadataCache.includesSources
-    var buildFileVersion by ClassPathMetadataCache.buildFileVersion
-}
-
-class ClassPathCacheEntryEntity(id: EntityID<Int>) : IntEntity(id) {
-    companion object : IntEntityClass<ClassPathCacheEntryEntity>(ClassPathCacheEntry)
-
-    var compiledJar by ClassPathCacheEntry.compiledJar
-    var sourceJar by ClassPathCacheEntry.sourceJar
-}
-
 fun setupTables() {
     SchemaUtils.createMissingTablesAndColumns(
         Symbols,
         Locations,
         Ranges,
-        Positions,
-        ClassPathMetadataCache,
-        ClassPathCacheEntry
+        Positions
     )
 }

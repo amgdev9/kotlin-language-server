@@ -1,64 +1,17 @@
 allprojects { project ->
     tasks.register('kotlinLSPProjectDeps') { task ->
         doLast {
-            if (project.hasProperty('android')) {
-                project.android.getBootClasspath().each {
+            sourceSets.forEach {
+                it.java.srcDirs.forEach {
+                    System.out.println "kotlin-lsp-sourcedir-java $it"
+                }
+                if (it.hasProperty("kotlin")) {
+                    it.kotlin.srcDirs.forEach {
+                        System.out.println "kotlin-lsp-sourcedir-kotlin $it"
+                    }
+                }
+                it.compileClasspath.forEach {
                     System.out.println "kotlin-lsp-gradle $it"
-                }
-
-                def variants = []
-
-                if (project.android.hasProperty('applicationVariants')) {
-                    variants += project.android.applicationVariants
-                }
-
-                if (project.android.hasProperty('libraryVariants')) {
-                    variants += project.android.libraryVariants
-                }
-
-                variants.each { variant ->
-                    def variantBase = variant.baseName.replaceAll("-", File.separator)
-
-                    def buildClasses = project.getBuildDir().absolutePath +
-                            File.separator + "intermediates" +
-                            File.separator + variantBase +
-                            File.separator + "classes"
-
-                    System.out.println "kotlin-lsp-gradle $buildClasses"
-
-                    def userClasses = project.getBuildDir().absolutePath +
-                            File.separator + "intermediates" +
-                            File.separator + "javac" +
-                            File.separator + variantBase +
-                            File.separator + "compile" + variantBase.capitalize() + "JavaWithJavac" + File.separator + "classes"
-
-                    System.out.println "kotlin-lsp-gradle $userClasses"
-
-                    def userVariantClasses = project.getBuildDir().absolutePath +
-                            File.separator + "intermediates" +
-                            File.separator + "javac" +
-                            File.separator + variantBase +
-                            File.separator + "classes"
-
-                    System.out.println "kotlin-lsp-gradle $userVariantClasses"
-
-                    variant.getCompileClasspath().each {
-                        System.out.println "kotlin-lsp-gradle $it"
-                    }
-                }
-            } else if (project.hasProperty('sourceSets')) {
-                sourceSets.forEach {
-                    it.java.srcDirs.forEach {
-                        System.out.println "kotlin-lsp-sourcedir-java $it"
-                    }
-                    if(it.hasProperty("kotlin")) {
-                        it.kotlin.srcDirs.forEach {
-                            System.out.println "kotlin-lsp-sourcedir-kotlin $it"
-                        }
-                    }
-                    it.compileClasspath.forEach {
-                        System.out.println "kotlin-lsp-gradle $it"
-                    }
                 }
             }
         }

@@ -1,9 +1,7 @@
 package org.javacs.kt.db
 
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.nio.file.Files
 import java.nio.file.Path
 
 const val DB_FILENAME = "kls_database.db"
