@@ -59,12 +59,18 @@ class SourceFile(
         }
     }
 
-    fun compileIfChanged() = parseIfChanged().apply { doCompileIfChanged() }
+    fun compileIfChanged() {
+        parseIfChanged()
+        doCompileIfChanged()
+    }
 
-    fun compile() = parse().apply { doCompile() }
+    fun compile() {
+        parse()
+        doCompile()
+    }
 
     private fun doCompile() {
-        LOG.debug("Compiling {}", path?.fileName)
+        LOG.info("Compiling {}", path?.fileName)
 
         val oldFile = clone()
 
