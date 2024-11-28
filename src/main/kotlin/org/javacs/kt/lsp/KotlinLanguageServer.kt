@@ -7,7 +7,7 @@ import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.LanguageServer
 import org.javacs.kt.*
 import org.javacs.kt.actions.semanticTokensLegend
-import org.javacs.kt.getGradleProjectInfo
+import org.javacs.kt.loadClasspathFromDisk
 import org.javacs.kt.index.setupIndexDB
 import org.javacs.kt.externalsources.createDecompilerOutputDirectory
 import org.javacs.kt.util.AsyncExecutor
@@ -90,7 +90,8 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             decompilerOutputDir = createDecompilerOutputDirectory(),
             sourcePath = SourcePath(),
             sourceFiles = SourceFiles(),
-            config = config
+            config = config,
+            projectClasspath = loadClasspathFromDisk(root)
         )
         clientSession.classPath.compiler.updateConfiguration()
 
@@ -100,13 +101,10 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
         LOG.info("Workspace folder {}", folder.name)
 
-        // Load info from gradle
-        val projectInfo = getGradleProjectInfo()
-
-        clientSession.sourceFiles.setupWorkspaceRoot(projectInfo)
+        clientSession.sourceFiles.setupWorkspaceRoot()
 
         // This reinstantiates the compiler if classpath has changed
-        val refreshedCompiler = clientSession.classPath.setupWorkspaceRoot(projectInfo)
+        val refreshedCompiler = clientSession.classPath.setupWorkspaceRoot()
         if (refreshedCompiler) {
             // Recompiles all source files, updating the index
             // TODO Is this needed?

@@ -253,8 +253,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     }
 
     override fun close() {
-        val awaitTermination = true
-        async.shutdown(awaitTermination)
-        debounceLint.shutdown(awaitTermination)
+        async.shutdown(awaitTermination = true)
+        debounceLint.shutdown(awaitTermination = true)
     }
 }

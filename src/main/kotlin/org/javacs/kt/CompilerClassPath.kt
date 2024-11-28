@@ -34,18 +34,18 @@ class CompilerClassPath: Closeable {
     ): Boolean {
         // TODO: Fetch class path concurrently (and asynchronously)
         var refreshCompiler = updateJavaSourcePath
-        val projectInfo = getGradleProjectInfo()
+        val projectClasspath = clientSession.projectClasspath
 
         if (updateClassPath) {
-            if (projectInfo.classPath != classPath) {
+            if (projectClasspath.classPath != classPath) {
                 synchronized(classPath) {
-                    syncPaths(classPath, projectInfo.classPath, "class path")
+                    syncPaths(classPath, projectClasspath.classPath, "class path")
                 }
                 refreshCompiler = true
             }
 
             async.compute {
-                val newClassPathWithSources = projectInfo
+                val newClassPathWithSources = projectClasspath
                 synchronized(classPath) {
                     syncPaths(classPath, newClassPathWithSources.classPath, "class path with sources")
                 }
@@ -82,10 +82,10 @@ class CompilerClassPath: Closeable {
         compiler.updateConfiguration()
     }
 
-    fun setupWorkspaceRoot(projectInfo: GradleProjectInfo): Boolean {
+    fun setupWorkspaceRoot(): Boolean {
         LOG.info("Searching for dependencies and Java sources...")
 
-        javaSourcePath.addAll(findJavaSourceFiles(projectInfo.javaSourceDirs))
+        javaSourcePath.addAll(findJavaSourceFiles(clientSession.projectClasspath.javaSourceDirs))
 
         return refresh()
     }

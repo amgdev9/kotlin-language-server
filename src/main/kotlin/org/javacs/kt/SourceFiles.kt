@@ -120,9 +120,9 @@ class SourceFiles {
         null
     }
 
-    fun setupWorkspaceRoot(projectInfo: GradleProjectInfo) {
+    fun setupWorkspaceRoot() {
         LOG.info("Searching kotlin files...")
-        val addSources = findKotlinSourceFiles(projectInfo.kotlinSourceDirs)
+        val addSources = findKotlinSourceFiles(clientSession.projectClasspath.kotlinSourceDirs)
 
         LOG.info("Adding {} to source path", "${addSources.size} files")
 

@@ -25,5 +25,6 @@ out
 *.vsix
 
 # KLS
-kls_database.db
+.klsp-index
+.klsp-classpath
 log.txt
