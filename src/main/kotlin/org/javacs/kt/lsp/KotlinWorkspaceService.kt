@@ -52,12 +52,6 @@ class KotlinWorkspaceService: WorkspaceService, LanguageClientAware {
                 get("chainedHints")?.asBoolean?.let { inlayHints.chainedHints = it }
             }
 
-            // Update code generation options
-            get("codegen")?.asJsonObject?.apply {
-                val codegen = config.codegen
-                get("enabled")?.asBoolean?.let { codegen.enabled = it }
-            }
-
             // Update options about external sources e.g. JAR files, decompilers, etc
             get("externalSources")?.asJsonObject?.apply {
                 val externalSources = config.externalSources

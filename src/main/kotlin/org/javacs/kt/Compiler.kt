@@ -59,7 +59,7 @@ class Compiler(
         defaultCompileEnvironment.updateConfiguration()
     }
 
-    fun createPsiFile(content: String, file: Path = Paths.get("dummy.virtual.kt"), language: Language = KotlinLanguage.INSTANCE): PsiFile {
+    fun createPsiFile(content: String, file: Path, language: Language): PsiFile {
         assert(!content.contains('\r'))
 
         val psiFileFactory = PsiFileFactory.getInstance(defaultCompileEnvironment.environment.project)
@@ -69,7 +69,7 @@ class Compiler(
         return new
     }
 
-    fun createKtFile(content: String, file: Path = Paths.get("dummy.virtual.kt")): KtFile =
+    fun createKtFile(content: String, file: Path): KtFile =
         createPsiFile(content, file, language = KotlinLanguage.INSTANCE) as KtFile
 
     fun compileKtFile(file: KtFile, sourcePath: Collection<KtFile>): Pair<BindingContext, ModuleDescriptor> =
@@ -118,20 +118,18 @@ class Compiler(
     }
 
     fun generateCode(module: ModuleDescriptor, bindingContext: BindingContext, files: Collection<KtFile>) {
-        outputDirectory.takeIf { clientSession.config.codegen.enabled }?.let {
-            compileLock.withLock {
-                val compileEnv = defaultCompileEnvironment
-                val state = GenerationState.Builder(
-                    project = compileEnv.environment.project,
-                    builderFactory = ClassBuilderFactories.BINARIES,
-                    module = module,
-                    bindingContext = bindingContext,
-                    files = files.toList(),
-                    configuration = compileEnv.environment.configuration
-                ).build()
-                KotlinCodegenFacade.compileCorrectFiles(state)
-                state.factory.writeAllTo(it)
-            }
+        compileLock.withLock {
+            val compileEnv = defaultCompileEnvironment
+            val state = GenerationState.Builder(
+                project = compileEnv.environment.project,
+                builderFactory = ClassBuilderFactories.BINARIES,
+                module = module,
+                bindingContext = bindingContext,
+                files = files.toList(),
+                configuration = compileEnv.environment.configuration
+            ).build()
+            KotlinCodegenFacade.compileCorrectFiles(state)
+            state.factory.writeAllTo(outputDirectory)
         }
     }
 
