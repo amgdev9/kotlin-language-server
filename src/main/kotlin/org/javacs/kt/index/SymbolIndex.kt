@@ -2,10 +2,6 @@ package org.javacs.kt.index
 
 import org.javacs.kt.LOG
 import org.javacs.kt.clientSession
-import org.javacs.kt.db.MAX_FQNAME_LENGTH
-import org.javacs.kt.db.MAX_SHORT_NAME_LENGTH
-import org.javacs.kt.db.SymbolEntity
-import org.javacs.kt.db.Symbols
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor

@@ -1,12 +1,10 @@
-package org.javacs.kt.db
+package org.javacs.kt.index
 
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.SchemaUtils
-
-// Symbols index
 
 const val MAX_FQNAME_LENGTH = 255
 const val MAX_SHORT_NAME_LENGTH = 80

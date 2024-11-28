@@ -79,6 +79,6 @@ private fun workspaceLocation(decl: KtNamedDeclaration): WorkspaceSymbolLocation
 
 private fun symbolContainer(d: KtNamedDeclaration): String? =
         d.parents
-                .filterIsInstance<KtNamedDeclaration>()
-                .firstOrNull()
-                ?.fqName.toString()
+            .filterIsInstance<KtNamedDeclaration>()
+            .firstOrNull()
+            ?.fqName.toString()
