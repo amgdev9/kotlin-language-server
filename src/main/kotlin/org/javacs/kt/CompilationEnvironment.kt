@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.container.ComponentProvider
 import org.jetbrains.kotlin.metadata.jvm.deserialization.JvmProtoBufUtil
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.resolve.BindingTraceContext
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory
 import java.io.Closeable
@@ -65,7 +64,7 @@ class CompilationEnvironment(
         },
         configFiles = EnvironmentConfigFiles.JVM_CONFIG_FILES
     )
-    
+
     fun updateConfiguration() {
         environment.configuration.put(JVMConfigurationKeys.JVM_TARGET, JvmTarget.JVM_21)    // TODO Make this version configurable by build system
     }
