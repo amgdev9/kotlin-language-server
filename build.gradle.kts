@@ -19,8 +19,6 @@ val lsp4jVersion = "0.21.2"
 dependencies {
     implementation(kotlin("stdlib"))
     implementation(kotlin("compiler"))
-    implementation(kotlin("scripting-compiler"))
-    implementation(kotlin("scripting-jvm-host-unshaded"))
     implementation(kotlin("sam-with-receiver-compiler-plugin"))
     implementation(kotlin("reflect"))
 
@@ -33,9 +31,6 @@ dependencies {
     implementation("com.google.guava:guava:32.0.0-jre")
     implementation("com.h2database:h2:2.2.220")
     implementation("org.xerial:sqlite-jdbc:3.41.2.2")
-
-    // See https://github.com/JetBrains/kotlin/blob/65b0a5f90328f4b9addd3a10c6f24f3037482276/libraries/examples/scripting/jvm-embeddable-host/build.gradle.kts#L8
-    compileOnly(kotlin("scripting-jvm-host"))
 
     annotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.20")
 }
