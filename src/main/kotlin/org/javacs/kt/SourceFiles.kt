@@ -14,6 +14,8 @@ import java.nio.file.Path
 import kotlin.io.path.extension
 import kotlin.streams.asSequence
 
+val javaHome: String? = System.getProperty("java.home", null)
+
 private class SourceVersion(val content: String, val version: Int, val language: Language?, val isTemporary: Boolean)
 
 private class NotifySourcePath() {
@@ -46,10 +48,14 @@ private class NotifySourcePath() {
  * Keep track of the text of all files in the workspace
  */
 class SourceFiles {
+    private val javaSourcePath = mutableSetOf<Path>()
+    val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
+    var compiler: Compiler? = null
+
     private val files = NotifySourcePath()
     private val openFiles = mutableSetOf<URI>()
 
-    fun open(uri: URI, content: String, version: Int) {
+    fun openSourceFile(uri: URI, content: String, version: Int) {
         files[uri] = SourceVersion(content, version, languageOf(uri), isTemporary = false)
         openFiles.add(uri)
     }
@@ -91,21 +97,39 @@ class SourceFiles {
 
     fun createdOnDisk(uri: URI) {
         changedOnDisk(uri)
+
+        if (isJavaSource(uri.filePath!!)) {
+            javaSourcePath.add(uri.filePath!!)
+        }
     }
 
     fun deletedOnDisk(uri: URI) {
-        if (!isSource(uri)) return
-        files.remove(uri)
+        if (isKotlinSource(uri)) {
+            files.remove(uri)
+        } else if (isJavaSource(uri.filePath!!)) {
+            javaSourcePath.remove(uri.filePath!!)
+            refreshCompilerAndSourcePath()
+        }
     }
 
     fun changedOnDisk(uri: URI) {
-        if (!isSource(uri)) return
+        if (isKotlinSource(uri)) {
+            val sourceVersion = readFromDisk(uri, files[uri]?.isTemporary == true)
+            if (sourceVersion == null) throw RuntimeException("Could not read source file '$uri' after being changed on disk")
 
-        val sourceVersion = readFromDisk(uri, files[uri]?.isTemporary == true)
-        if (sourceVersion == null) throw RuntimeException("Could not read source file '$uri' after being changed on disk")
-
-        files[uri] = sourceVersion
+            files[uri] = sourceVersion
+        } else if(isJavaSource(uri.filePath!!)) {
+            refreshCompilerAndSourcePath()
+        }
     }
+
+    private fun refreshCompilerAndSourcePath() {
+        LOG.info("Reinstantiating compiler")
+        compiler?.close()
+        compiler = buildCompiler()
+        clientSession.sourcePath.refresh()
+    }
+
 
     private fun readFromDisk(uri: URI, temporary: Boolean): SourceVersion? = try {
         val content = contentOf(uri)
@@ -118,10 +142,10 @@ class SourceFiles {
     }
 
     fun setupWorkspaceRoot() {
-        LOG.info("Searching kotlin files...")
+        LOG.info("Searching kotlin source files...")
         val addSources = findKotlinSourceFiles(clientSession.projectClasspath.kotlinSourceDirs)
 
-        LOG.info("Adding {} to source path", "${addSources.size} files")
+        LOG.info("Adding {} kotlin files to source path", "${addSources.size} files")
 
         // Load all kotlin files into RAM
         for (uri in addSources) {
@@ -133,6 +157,28 @@ class SourceFiles {
 
             files[uri] = sourceVersion
         }
+
+        LOG.info("Searching java source files...")
+        javaSourcePath.addAll(findJavaSourceFiles(clientSession.projectClasspath.javaSourceDirs))
+
+        LOG.info("Instantiating compiler...")
+        compiler = buildCompiler()
+    }
+
+    private fun buildCompiler(): Compiler {
+        return Compiler(
+            javaSourcePath,
+            clientSession.projectClasspath.classPath.asSequence().map { it.compiledJar }.toSet(),
+            outputDirectory
+        )
+    }
+
+    private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
+        return javaSourceDirs.asSequence()
+            .flatMap {
+                Files.walk(it).filter { it.extension == "java" }.asSequence()
+            }
+            .toSet()
     }
 
     private fun findKotlinSourceFiles(kotlinSourceDirs: Set<Path>): Set<URI> {
@@ -145,6 +191,11 @@ class SourceFiles {
     }
 
     fun isOpen(uri: URI): Boolean = (uri in openFiles)
+
+    fun close() {
+        compiler?.close()
+        outputDirectory.delete()
+    }
 }
 
 private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): String {
@@ -187,7 +238,8 @@ private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): S
     }
 }
 
-private fun isSource(uri: URI): Boolean = languageOf(uri) != null
+private fun isKotlinSource(uri: URI): Boolean = uri.filePath?.fileName?.toString()?.endsWith(".kt") == true
+private fun isJavaSource(file: Path): Boolean = file.fileName.toString().endsWith(".java")
 
 private fun languageOf(uri: URI): Language? {
     val fileName = uri.filePath?.fileName?.toString() ?: return null

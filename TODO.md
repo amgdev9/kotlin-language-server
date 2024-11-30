@@ -1,3 +1,3 @@
-- Fusionar CompilerClassPath y SourceFiles
+- Mover Compiler a clientSession
 - Optimizar indexado
 

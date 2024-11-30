@@ -75,7 +75,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             db = setupIndexDB(root),
             rootPath = root,
             client = client,
-            classPath = CompilerClassPath(),
             tempFolder = TemporaryFolder(),
             decompilerOutputDir = createDecompilerOutputDirectory(),
             sourcePath = SourcePath(),
@@ -88,9 +87,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
         // Here starts the project load
         clientSession.sourceFiles.setupWorkspaceRoot()
-
-        // This reinstantiates the compiler
-        clientSession.classPath.setupWorkspaceRoot()
 
         // Recompiles all source files, updating the index
         // TODO Is this needed?
@@ -108,7 +104,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
     override fun close() {
         textDocumentService.close()
-        clientSession.classPath.close()
+        clientSession.sourceFiles.close()
         clientSession.tempFolder.close()
         async.shutdown(awaitTermination = true)
 

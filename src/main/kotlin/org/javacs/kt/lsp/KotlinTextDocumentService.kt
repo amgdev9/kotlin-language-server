@@ -100,7 +100,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     override fun didOpen(params: DidOpenTextDocumentParams) {
         val uri = parseURI(params.textDocument.uri)
-        clientSession.sourceFiles.open(uri, params.textDocument.text, params.textDocument.version)
+        clientSession.sourceFiles.openSourceFile(uri, params.textDocument.text, params.textDocument.version)
         lintNow(uri)
     }
 

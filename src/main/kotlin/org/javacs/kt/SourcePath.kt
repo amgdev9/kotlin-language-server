@@ -46,7 +46,7 @@ class SourcePath {
     fun delete(uri: URI) {
         files[uri]?.let {
             refreshWorkspaceIndexes(listOf(it), listOf())
-            clientSession.classPath.compiler!!.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
+            clientSession.sourceFiles.compiler!!.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
         }
 
         files.remove(uri)
@@ -106,7 +106,7 @@ class SourcePath {
 
         // Get all the files. This will parse them if they changed
         val allFiles = all()
-        val (context, module) = clientSession.classPath.compiler!!.compileKtFiles(parse.values, allFiles)
+        val (context, module) = clientSession.sourceFiles.compiler!!.compileKtFiles(parse.values, allFiles)
 
         // Update cache
         for ((f, parsed) in parse) {
@@ -147,12 +147,12 @@ class SourcePath {
 
         // If the code generation fails for some reason, we generate code for the other files anyway
         try {
-            clientSession.classPath.compiler!!.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
+            clientSession.sourceFiles.compiler!!.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
             val module = file.module
             val context = file.compiledContext
             if (module == null || context == null) return
 
-            clientSession.classPath.compiler!!.generateCode(module, context, listOfNotNull(file.compiledFile))
+            clientSession.sourceFiles.compiler!!.generateCode(module, context, listOfNotNull(file.compiledFile))
             file.lastSavedFile = file.compiledFile
         } catch (ex: Exception) {
             LOG.printStackTrace(ex)
