@@ -7,15 +7,13 @@ import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
 import java.net.URI
-import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.concurrent.withLock
 
 class SourceFile(
     val uri: URI,
     var content: String,
-    val path: Path? = uri.filePath,
-    var parsed: KtFile? = null,
+    var ktFile: KtFile? = null,
     var compiledFile: KtFile? = null,
     var compiledContext: BindingContext? = null,
     var module: ModuleDescriptor? = null,
@@ -23,15 +21,12 @@ class SourceFile(
     val isTemporary: Boolean = false, // A temporary source file will not be returned by .all()
     var lastSavedFile: KtFile? = null,
 ) {
-    val extension: String? =
-        uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
-
     fun put(newContent: String) {
         content = newContent
     }
 
     fun clean() {
-        parsed = null
+        ktFile = null
         compiledFile = null
         compiledContext = null
         module = null
@@ -39,21 +34,22 @@ class SourceFile(
 
     fun parse() {
         // TODO: Create PsiFile using the stored language instead
-        parsed = clientSession.sourceFiles.compiler.createKtFile(
+        val extension = uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
+        ktFile = clientSession.sourceFiles.compiler.createKtFile(
             content,
-            path ?: Paths.get("sourceFile.virtual.$extension")
+            uri.filePath ?: Paths.get("sourceFile.virtual.$extension")
         )
     }
 
     fun parseIfChanged() {
-        if (content != parsed?.text) {
+        if (content != ktFile?.text) {
             parse()
         }
     }
 
     fun compileIfChanged() {
         parseIfChanged()
-        if (parsed?.text != compiledFile?.text) {
+        if (ktFile?.text != compiledFile?.text) {
             doCompile()
         }
     }
@@ -64,18 +60,18 @@ class SourceFile(
     }
 
     private fun doCompile() {
-        LOG.info("Compiling {}", path?.fileName)
+        LOG.info("Compiling {}", uri.filePath?.fileName)
 
         val oldFile = clone()
 
-        val (context, module) = clientSession.sourceFiles.compiler.compileKtFile(parsed!!, allIncludingThis())
+        val (context, module) = clientSession.sourceFiles.compiler.compileKtFile(ktFile!!, allIncludingThis())
         clientSession.sourcePath.parseDataWriteLock.withLock {
             compiledContext = context
             this.module = module
-            compiledFile = parsed
+            compiledFile = ktFile
         }
 
-        clientSession.sourcePath.refreshWorkspaceIndexes(listOfNotNull(oldFile), listOfNotNull(this))
+        clientSession.sourcePath.refreshWorkspaceIndexes(listOf(oldFile), listOf(this))
     }
 
     fun prepareCompiledFile(): CompiledFile {
@@ -92,12 +88,12 @@ class SourceFile(
         )
     }
 
-    private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
-        if (isTemporary) (clientSession.sourcePath.all().asSequence() + sequenceOf(parsed!!)).toList()
+    private fun allIncludingThis(): Collection<KtFile> {
+        parseIfChanged()
+        return if (isTemporary) (clientSession.sourcePath.all().asSequence() + sequenceOf(ktFile!!)).toList()
         else clientSession.sourcePath.all()
     }
 
-    // Creates a shallow copy
     fun clone(): SourceFile =
-        SourceFile(uri, content, path, parsed, compiledFile, compiledContext, module, language, isTemporary)
+        SourceFile(uri, content, ktFile, compiledFile, compiledContext, module, language, isTemporary)
 }

@@ -45,8 +45,8 @@ class SourcePath {
 
     fun delete(uri: URI) {
         files[uri]?.let {
-            refreshWorkspaceIndexes(listOf(it), listOf())
-            clientSession.sourceFiles.compiler!!.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
+            refreshWorkspaceIndexes(listOf(it), emptyList())
+            clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
         }
 
         files.remove(uri)
@@ -57,7 +57,7 @@ class SourcePath {
      */
     fun content(uri: URI): String = files[uri]!!.content
 
-    fun parsedFile(uri: URI): KtFile = files[uri]!!.apply { parseIfChanged() }.parsed!!
+    fun parsedFile(uri: URI): KtFile = files[uri]!!.apply { parseIfChanged() }.ktFile!!
 
     /**
      * Compile the latest version of a file
@@ -94,7 +94,7 @@ class SourcePath {
 
         // Get clones of the old files, so we can remove the old declarations from the index
         val oldFiles = changed.mapNotNull {
-            if (it.compiledFile?.text != it.content || it.parsed?.text != it.content) {
+            if (it.compiledFile?.text != it.content || it.ktFile?.text != it.content) {
                 it.clone()
             } else {
                 null
@@ -102,16 +102,16 @@ class SourcePath {
         }
 
         // Parse the files that have changed
-        val parse = changed.associateWith { it.apply { parseIfChanged() }.parsed!! }
+        val parse = changed.associateWith { it.apply { parseIfChanged() }.ktFile!! }
 
         // Get all the files. This will parse them if they changed
         val allFiles = all()
-        val (context, module) = clientSession.sourceFiles.compiler!!.compileKtFiles(parse.values, allFiles)
+        val (context, module) = clientSession.sourceFiles.compiler.compileKtFiles(parse.values, allFiles)
 
         // Update cache
         for ((f, parsed) in parse) {
             parseDataWriteLock.withLock {
-                if (f.parsed == parsed) {
+                if (f.ktFile == parsed) {
                     //only updated if the parsed file didn't change:
                     f.compiledFile = parsed
                     f.compiledContext = context
@@ -147,12 +147,12 @@ class SourcePath {
 
         // If the code generation fails for some reason, we generate code for the other files anyway
         try {
-            clientSession.sourceFiles.compiler!!.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
+            clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
             val module = file.module
             val context = file.compiledContext
             if (module == null || context == null) return
 
-            clientSession.sourceFiles.compiler!!.generateCode(module, context, listOfNotNull(file.compiledFile))
+            clientSession.sourceFiles.compiler.generateCode(module, context, listOfNotNull(file.compiledFile))
             file.lastSavedFile = file.compiledFile
         } catch (ex: Exception) {
             LOG.printStackTrace(ex)
@@ -194,22 +194,21 @@ class SourcePath {
     // Gets all the declaration descriptors for the collection of files
     private fun getDeclarationDescriptors(files: Collection<SourceFile>) =
         files.flatMap { file ->
-            val compiledFile = file.compiledFile ?: file.parsed
+            val compiledFile = file.compiledFile ?: file.ktFile
             val module = file.module
-            if (compiledFile != null && module != null) {
-                module.getPackage(compiledFile.packageFqName).memberScope.getContributedDescriptors(
-                    DescriptorKindFilter.ALL
-                ) { name -> compiledFile.declarations.map { it.name }.contains(name.toString()) }
-            } else {
-                listOf()
-            }
+            if (compiledFile == null || module == null) return@flatMap emptyList()
+
+            return@flatMap module.getPackage(compiledFile.packageFqName).memberScope.getContributedDescriptors(
+                DescriptorKindFilter.ALL
+            ) { name -> compiledFile.declarations.map { it.name }.contains(name.toString()) }
+
         }.asSequence()
 
     /**
      * Recompiles all source files that are initialized.
      */
     fun refresh() {
-        val initialized = files.values.any { it.parsed != null }
+        val initialized = files.values.any { it.ktFile != null }
         if (!initialized) return
 
         LOG.info("Refreshing source path")
@@ -224,6 +223,6 @@ class SourcePath {
         files.values
             .asSequence()
             .filter { includeHidden || !it.isTemporary }
-            .map { it.apply { parseIfChanged() }.parsed!! }
+            .map { it.apply { parseIfChanged() }.ktFile!! }
             .toList()
 }
