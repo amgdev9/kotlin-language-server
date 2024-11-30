@@ -48,12 +48,62 @@ private class NotifySourcePath() {
  * Keep track of the text of all files in the workspace
  */
 class SourceFiles {
-    private val javaSourcePath = mutableSetOf<Path>()
-    val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
-    var compiler: Compiler? = null
+    lateinit var compiler: Compiler
+        private set
 
     private val files = NotifySourcePath()
     private val openFiles = mutableSetOf<URI>()
+    private val javaSourcePath = mutableSetOf<Path>()
+    private val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
+
+    fun setup() {
+        LOG.info("Searching kotlin source files...")
+        val addSources = findKotlinSourceFiles(clientSession.projectClasspath.kotlinSourceDirs)
+
+        LOG.info("Adding {} kotlin files to source path", "${addSources.size} files")
+
+        // Load all kotlin files into RAM
+        for (uri in addSources) {
+            val sourceVersion = readFromDisk(uri, temporary = false)
+            if (sourceVersion == null) {
+                LOG.warn("Could not read source file '{}'", uri.path)
+                continue
+            }
+
+            files[uri] = sourceVersion
+        }
+
+        LOG.info("Searching java source files...")
+        javaSourcePath.addAll(findJavaSourceFiles(clientSession.projectClasspath.javaSourceDirs))
+
+        LOG.info("Instantiating compiler...")
+        compiler = buildCompiler()
+    }
+
+    private fun buildCompiler(): Compiler {
+        return Compiler(
+            javaSourcePath,
+            clientSession.projectClasspath.classPath.asSequence().map { it.compiledJar }.toSet(),
+            outputDirectory
+        )
+    }
+
+    private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
+        return javaSourceDirs.asSequence()
+            .flatMap {
+                Files.walk(it).filter { it.extension == "java" }.asSequence()
+            }
+            .toSet()
+    }
+
+    private fun findKotlinSourceFiles(kotlinSourceDirs: Set<Path>): Set<URI> {
+        return kotlinSourceDirs.asSequence()
+            .flatMap {
+                Files.walk(it).filter { it.extension == "kt" }.asSequence()
+            }
+            .map { it.toUri() }
+            .toSet()
+    }
 
     fun openSourceFile(uri: URI, content: String, version: Int) {
         files[uri] = SourceVersion(content, version, languageOf(uri), isTemporary = false)
@@ -125,7 +175,7 @@ class SourceFiles {
 
     private fun refreshCompilerAndSourcePath() {
         LOG.info("Reinstantiating compiler")
-        compiler?.close()
+        compiler.close()
         compiler = buildCompiler()
         clientSession.sourcePath.refresh()
     }
@@ -141,59 +191,10 @@ class SourceFiles {
         null
     }
 
-    fun setupWorkspaceRoot() {
-        LOG.info("Searching kotlin source files...")
-        val addSources = findKotlinSourceFiles(clientSession.projectClasspath.kotlinSourceDirs)
-
-        LOG.info("Adding {} kotlin files to source path", "${addSources.size} files")
-
-        // Load all kotlin files into RAM
-        for (uri in addSources) {
-            val sourceVersion = readFromDisk(uri, temporary = false)
-            if (sourceVersion == null) {
-                LOG.warn("Could not read source file '{}'", uri.path)
-                continue
-            }
-
-            files[uri] = sourceVersion
-        }
-
-        LOG.info("Searching java source files...")
-        javaSourcePath.addAll(findJavaSourceFiles(clientSession.projectClasspath.javaSourceDirs))
-
-        LOG.info("Instantiating compiler...")
-        compiler = buildCompiler()
-    }
-
-    private fun buildCompiler(): Compiler {
-        return Compiler(
-            javaSourcePath,
-            clientSession.projectClasspath.classPath.asSequence().map { it.compiledJar }.toSet(),
-            outputDirectory
-        )
-    }
-
-    private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
-        return javaSourceDirs.asSequence()
-            .flatMap {
-                Files.walk(it).filter { it.extension == "java" }.asSequence()
-            }
-            .toSet()
-    }
-
-    private fun findKotlinSourceFiles(kotlinSourceDirs: Set<Path>): Set<URI> {
-        return kotlinSourceDirs.asSequence()
-            .flatMap {
-                Files.walk(it).filter { it.extension == "kt" }.asSequence()
-            }
-            .map { it.toUri() }
-            .toSet()
-    }
-
     fun isOpen(uri: URI): Boolean = (uri in openFiles)
 
     fun close() {
-        compiler?.close()
+        compiler.close()
         outputDirectory.delete()
     }
 }

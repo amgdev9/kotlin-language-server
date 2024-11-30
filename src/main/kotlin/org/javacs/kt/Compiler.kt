@@ -24,7 +24,6 @@ import org.jetbrains.kotlin.resolve.scopes.LexicalScope
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.expressions.ExpressionTypingServices
 import org.jetbrains.kotlin.util.KotlinFrontEndException
-import java.io.Closeable
 import java.io.File
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantLock
@@ -38,9 +37,7 @@ class Compiler(
     javaSourcePath: Set<Path>,
     classPath: Set<Path>,
     private val outputDirectory: File,
-) : Closeable {
-    private var closed = false
-
+) {
     private val defaultCompileEnvironment = CompilationEnvironment(javaSourcePath, classPath)
     private val compileLock = ReentrantLock() // TODO: Lock at file-level
 
@@ -125,13 +122,7 @@ class Compiler(
         }
     }
 
-    override fun close() {
-        if (closed) {
-            LOG.warn("Compiler is already closed!")
-            return
-        }
-
+    fun close() {
         defaultCompileEnvironment.close()
-        closed = true
     }
 }

@@ -85,8 +85,8 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
         LOG.info("Workspace folder {}", folder.name)
         LOG.info("Classpath files: ${clientSession.projectClasspath.classPath.size}")
 
-        // Here starts the project load
-        clientSession.sourceFiles.setupWorkspaceRoot()
+        // Begin the setup
+        clientSession.sourceFiles.setup()
 
         // Recompiles all source files, updating the index
         // TODO Is this needed?
