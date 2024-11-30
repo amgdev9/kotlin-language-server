@@ -77,15 +77,7 @@ class SourceFiles {
         javaSourcePath.addAll(findJavaSourceFiles(clientSession.projectClasspath.javaSourceDirs))
 
         LOG.info("Instantiating compiler...")
-        compiler = buildCompiler()
-    }
-
-    private fun buildCompiler(): Compiler {
-        return Compiler(
-            javaSourcePath,
-            clientSession.projectClasspath.classPath.asSequence().map { it.compiledJar }.toSet(),
-            outputDirectory
-        )
+        compiler = Compiler(outputDirectory)
     }
 
     private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
@@ -176,7 +168,7 @@ class SourceFiles {
     private fun refreshCompilerAndSourcePath() {
         LOG.info("Reinstantiating compiler")
         compiler.close()
-        compiler = buildCompiler()
+        compiler = Compiler(outputDirectory)
         clientSession.sourcePath.refresh()
     }
 

@@ -88,10 +88,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
         // Begin the setup
         clientSession.sourceFiles.setup()
 
-        // Recompiles all source files, updating the index
-        // TODO Is this needed?
-        clientSession.sourcePath.refresh()
-
         // This compiles all the files twice and updates the index twice
         // TODO Optimize this mess
         textDocuments.lintAll()

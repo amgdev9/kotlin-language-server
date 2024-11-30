@@ -34,11 +34,9 @@ import kotlin.concurrent.withLock
  * The basic strategy for compiling one file at-a-time is outlined in OneFilePerformance.
  */
 class Compiler(
-    javaSourcePath: Set<Path>,
-    classPath: Set<Path>,
     private val outputDirectory: File,
 ) {
-    private val defaultCompileEnvironment = CompilationEnvironment(javaSourcePath, classPath)
+    private val defaultCompileEnvironment = CompilationEnvironment()
     private val compileLock = ReentrantLock() // TODO: Lock at file-level
 
     companion object {

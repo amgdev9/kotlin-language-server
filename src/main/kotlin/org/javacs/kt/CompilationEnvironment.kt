@@ -17,19 +17,14 @@ import org.jetbrains.kotlin.metadata.jvm.deserialization.JvmProtoBufUtil
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingTraceContext
 import org.jetbrains.kotlin.resolve.lazy.declarations.FileBasedDeclarationProviderFactory
-import java.io.Closeable
 import java.io.File
-import java.nio.file.Path
 import org.jetbrains.kotlin.config.CompilerConfiguration as KotlinCompilerConfiguration
 
 /**
  * Kotlin compiler APIs used to parse, analyze and compile
  * files and expressions.
  */
-class CompilationEnvironment(
-    javaSourcePath: Set<Path>,
-    classPath: Set<Path>
-) : Closeable {
+class CompilationEnvironment {
     private val disposable = Disposer.newDisposable()
 
     val environment = KotlinCoreEnvironment.createForProduction(
@@ -60,8 +55,8 @@ class CompilationEnvironment(
             val jdkHome = File(System.getProperty("java.home")) // TODO Get it from gradle sourceCompatibility
             put(JVMConfigurationKeys.JDK_HOME, jdkHome)
 
-            addJvmClasspathRoots(classPath.map { it.toFile() })
-            addJavaSourceRoots(javaSourcePath.map { it.toFile() })
+            addJvmClasspathRoots(clientSession.projectClasspath.classPath.map { it.compiledJar.toFile() })
+            addJavaSourceRoots(clientSession.projectClasspath.javaSourceDirs.map { it.toFile() })
         },
         configFiles = EnvironmentConfigFiles.JVM_CONFIG_FILES
     )
@@ -80,7 +75,7 @@ class CompilationEnvironment(
         return Pair(container, trace)
     }
 
-    override fun close() {
+    fun close() {
         Disposer.dispose(disposable)
     }
 }
