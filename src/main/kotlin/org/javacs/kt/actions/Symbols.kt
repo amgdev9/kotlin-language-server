@@ -8,6 +8,7 @@ import org.eclipse.lsp4j.WorkspaceSymbol
 import org.eclipse.lsp4j.WorkspaceSymbolLocation
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.javacs.kt.SourcePath
+import org.javacs.kt.clientSession
 import org.javacs.kt.util.containsCharactersInOrder
 import org.javacs.kt.util.preOrderTraversal
 import org.javacs.kt.util.toPath
@@ -15,7 +16,7 @@ import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.parents
 
 fun documentSymbols(file: KtFile): List<Either<SymbolInformation, DocumentSymbol>> =
-        doDocumentSymbols(file).map { Either.forRight(it) }
+    doDocumentSymbols(file).map { Either.forRight(it) }
 
 private fun doDocumentSymbols(element: PsiElement): List<DocumentSymbol> {
     val children = element.children.flatMap(::doDocumentSymbols)
@@ -30,28 +31,28 @@ private fun doDocumentSymbols(element: PsiElement): List<DocumentSymbol> {
     } ?: children
 }
 
-fun workspaceSymbols(query: String, sp: SourcePath): List<WorkspaceSymbol> =
-        doWorkspaceSymbols(sp)
-                .filter { containsCharactersInOrder(it.name!!, query, false) }
-                .mapNotNull(::workspaceSymbol)
-                .toList()
-
-private fun doWorkspaceSymbols(sp: SourcePath): Sequence<KtNamedDeclaration> =
-        sp.all().asSequence().flatMap(::fileSymbols)
+fun workspaceSymbols(query: String): List<WorkspaceSymbol> =
+    clientSession.sourcePath
+        .all()
+        .asSequence()
+        .flatMap(::fileSymbols)
+        .filter { containsCharactersInOrder(it.name!!, query, false) }
+        .mapNotNull(::workspaceSymbol)
+        .toList()
 
 private fun fileSymbols(file: KtFile): Sequence<KtNamedDeclaration> =
         file.preOrderTraversal().mapNotNull { pickImportantElements(it, false) }
 
 private fun pickImportantElements(node: PsiElement, includeLocals: Boolean): KtNamedDeclaration? =
-        when (node) {
-            is KtClassOrObject -> if (node.name == null) null else node
-            is KtTypeAlias -> node
-            is KtConstructor<*> -> node
-            is KtNamedFunction -> if (!node.isLocal || includeLocals) node else null
-            is KtProperty -> if (!node.isLocal || includeLocals) node else null
-            is KtVariableDeclaration -> if (includeLocals) node else null
-            else -> null
-        }
+    when (node) {
+        is KtClassOrObject -> if (node.name == null) null else node
+        is KtTypeAlias -> node
+        is KtConstructor<*> -> node
+        is KtNamedFunction -> if (!node.isLocal || includeLocals) node else null
+        is KtProperty -> if (!node.isLocal || includeLocals) node else null
+        is KtVariableDeclaration -> if (includeLocals) node else null
+        else -> null
+    }
 
 private fun workspaceSymbol(decl: KtNamedDeclaration): WorkspaceSymbol? {
     val name = decl.name ?: return null
@@ -78,7 +79,7 @@ private fun workspaceLocation(decl: KtNamedDeclaration): WorkspaceSymbolLocation
 }
 
 private fun symbolContainer(d: KtNamedDeclaration): String? =
-        d.parents
-            .filterIsInstance<KtNamedDeclaration>()
-            .firstOrNull()
-            ?.fqName.toString()
+    d.parents
+        .filterIsInstance<KtNamedDeclaration>()
+        .firstOrNull()
+        ?.fqName.toString()

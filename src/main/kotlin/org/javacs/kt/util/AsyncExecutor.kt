@@ -17,11 +17,9 @@ class AsyncExecutor {
 	fun <R> compute(task: () -> R) =
 			CompletableFuture.supplyAsync(Supplier(task), workerThread)
 
-	fun shutdown(awaitTermination: Boolean) {
+	fun shutdown() {
 		workerThread.shutdown()
-		if (awaitTermination) {
-			LOG.info("Awaiting async termination...")
-			workerThread.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS)
-		}
+		LOG.info("Awaiting async termination...")
+		workerThread.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS)
 	}
 }

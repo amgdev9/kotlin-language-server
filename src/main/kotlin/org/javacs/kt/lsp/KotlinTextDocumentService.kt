@@ -3,24 +3,25 @@ package org.javacs.kt.lsp
 import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.eclipse.lsp4j.services.TextDocumentService
-import org.javacs.kt.*
+import org.javacs.kt.CompiledFile
+import org.javacs.kt.LOG
 import org.javacs.kt.actions.*
 import org.javacs.kt.actions.completion.completions
+import org.javacs.kt.clientSession
 import org.javacs.kt.codeaction.codeActions
 import org.javacs.kt.util.*
 import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
 import java.io.Closeable
 import java.net.URI
 import java.nio.file.Path
-import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 class KotlinTextDocumentService: TextDocumentService, Closeable {
     private val async = AsyncExecutor()
 
-    var debounceLint = Debouncer(Duration.ofMillis(250L))
-    val lintTodo = mutableSetOf<URI>()
-    var lintCount = 0
+    private var debounceLint = Debouncer()
+    private val lintTodo = mutableSetOf<URI>()
+    private var lintCount = 0
 
     private val TextDocumentIdentifier.filePath: Path?
         get() = parseURI(uri).filePath
@@ -207,9 +208,9 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     }
 
     private fun reportDiagnostics(compiled: Collection<URI>, kotlinDiagnostics: Diagnostics) {
-        val langServerDiagnostics = kotlinDiagnostics
+        val byFile = kotlinDiagnostics
             .flatMap(::convertDiagnostic)
-        val byFile = langServerDiagnostics.groupBy({ it.first }, { it.second })
+            .groupBy({ it.first }, { it.second })
 
         for ((uri, diagnostics) in byFile) {
             if (clientSession.sourceFiles.isOpen(uri)) {
@@ -235,7 +236,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     }
 
     override fun close() {
-        async.shutdown(awaitTermination = true)
-        debounceLint.shutdown(awaitTermination = true)
+        async.shutdown()
+        debounceLint.shutdown()
     }
 }

@@ -90,8 +90,10 @@ class SourceFile(
 
     private fun allIncludingThis(): Collection<KtFile> {
         parseIfChanged()
-        return if (isTemporary) (clientSession.sourcePath.all().asSequence() + sequenceOf(ktFile!!)).toList()
-        else clientSession.sourcePath.all()
+        if (isTemporary) {
+            return (clientSession.sourcePath.all().asSequence() + sequenceOf(ktFile!!)).toList()
+        }
+        return clientSession.sourcePath.all()
     }
 
     fun clone(): SourceFile =

@@ -1,7 +1,6 @@
 package org.javacs.kt.util
 
 import org.javacs.kt.LOG
-import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledExecutorService
@@ -10,14 +9,11 @@ import java.util.concurrent.atomic.AtomicReference
 
 private var threadCount = 0
 
-class Debouncer(
-    delay: Duration,
+class Debouncer {
+    private var pendingTask: Future<*>? = null
     private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(1) {
         Thread(it, "debounce${threadCount++}")
     }
-) {
-    private val delayMs = delay.toMillis()
-    private var pendingTask: Future<*>? = null
 
     fun submitImmediately(task: (cancelCallback: () -> Boolean) -> Unit) {
         pendingTask?.cancel(false)
@@ -30,16 +26,14 @@ class Debouncer(
     fun schedule(task: (cancelCallback: () -> Boolean) -> Unit) {
         pendingTask?.cancel(false)
         val currentTaskRef = AtomicReference<Future<*>>()
-        val currentTask = executor.schedule({ task { currentTaskRef.get()?.isCancelled == true } }, delayMs, TimeUnit.MILLISECONDS)
+        val currentTask = executor.schedule({ task { currentTaskRef.get()?.isCancelled == true } }, 250, TimeUnit.MILLISECONDS)
         currentTaskRef.set(currentTask)
         pendingTask = currentTask
     }
 
-    fun shutdown(awaitTermination: Boolean) {
+    fun shutdown() {
         executor.shutdown()
-        if (awaitTermination) {
-			LOG.info("Awaiting debouncer termination...")
-			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS)
-		}
+        LOG.info("Awaiting debouncer termination...")
+        executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS)
     }
 }

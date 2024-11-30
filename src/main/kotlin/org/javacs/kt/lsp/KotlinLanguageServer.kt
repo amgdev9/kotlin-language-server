@@ -102,7 +102,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
         textDocumentService.close()
         clientSession.sourceFiles.close()
         clientSession.tempFolder.close()
-        async.shutdown(awaitTermination = true)
+        async.shutdown()
 
         LOG.info("Closing language server...")
         exitProcess(0)

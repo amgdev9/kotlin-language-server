@@ -1,34 +1,20 @@
 package org.javacs.kt.actions
 
-import org.eclipse.lsp4j.SemanticTokenTypes
-import org.eclipse.lsp4j.SemanticTokenModifiers
-import org.eclipse.lsp4j.SemanticTokensLegend
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiLiteralExpression
+import com.intellij.psi.PsiNameIdentifierOwner
+import com.intellij.psi.PsiTypes
 import org.eclipse.lsp4j.Range
+import org.eclipse.lsp4j.SemanticTokenModifiers
+import org.eclipse.lsp4j.SemanticTokenTypes
+import org.eclipse.lsp4j.SemanticTokensLegend
 import org.javacs.kt.CompiledFile
 import org.javacs.kt.util.preOrderTraversal
-import org.jetbrains.kotlin.descriptors.ClassDescriptor
-import org.jetbrains.kotlin.descriptors.ClassKind
-import org.jetbrains.kotlin.descriptors.ConstructorDescriptor
-import org.jetbrains.kotlin.descriptors.FunctionDescriptor
-import org.jetbrains.kotlin.descriptors.PropertyDescriptor
-import org.jetbrains.kotlin.descriptors.VariableDescriptor
+import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtFunction
-import org.jetbrains.kotlin.psi.KtModifierListOwner
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression
-import org.jetbrains.kotlin.psi.KtVariableDeclaration
-import org.jetbrains.kotlin.psi.KtProperty
-import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.kotlin.psi.KtEnumEntry
-import org.jetbrains.kotlin.psi.KtSimpleNameStringTemplateEntry
+import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.resolve.BindingContext
-import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiNameIdentifierOwner
-import com.intellij.psi.PsiLiteralExpression
-import com.intellij.psi.PsiType
-import com.intellij.openapi.util.TextRange
-import com.intellij.psi.PsiTypes
 
 enum class SemanticTokenType(val typeName: String) {
     KEYWORD(SemanticTokenTypes.Keyword),
@@ -76,7 +62,7 @@ fun encodedSemanticTokens(file: CompiledFile, range: Range? = null): List<Int> =
 fun semanticTokens(file: CompiledFile, range: Range? = null): Sequence<SemanticToken> =
     elementTokens(file.parse, file.compile, range)
 
-fun encodeTokens(tokens: Sequence<SemanticToken>): List<Int> {
+private fun encodeTokens(tokens: Sequence<SemanticToken>): List<Int> {
     val encoded = mutableListOf<Int>()
     var last: SemanticToken? = null
 
@@ -103,6 +89,7 @@ fun encodeTokens(tokens: Sequence<SemanticToken>): List<Int> {
 private fun encodeType(type: SemanticTokenType): Int = type.ordinal
 
 private fun encodeModifiers(modifiers: Set<SemanticTokenModifier>): Int = modifiers
+    .asSequence()
     .map { 1 shl it.ordinal }
     .fold(0, Int::or)
 

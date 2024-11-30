@@ -19,21 +19,15 @@ class KotlinWorkspaceService: WorkspaceService, LanguageClientAware {
             val uri = parseURI(change.uri)
 
             when (change.type) {
-                FileChangeType.Created -> {
-                    clientSession.sourceFiles.createdOnDisk(uri)
-                }
-                FileChangeType.Deleted -> {
-                    clientSession.sourceFiles.deletedOnDisk(uri)
-                }
-                FileChangeType.Changed -> {
-                    clientSession.sourceFiles.changedOnDisk(uri)
-                }
+                FileChangeType.Created -> clientSession.sourceFiles.createdOnDisk(uri)
+                FileChangeType.Deleted -> clientSession.sourceFiles.deletedOnDisk(uri)
+                FileChangeType.Changed -> clientSession.sourceFiles.changedOnDisk(uri)
             }
         }
     }
 
     override fun symbol(params: WorkspaceSymbolParams): CompletableFuture<Either<List<SymbolInformation>, List<WorkspaceSymbol>>> {
-        val result = workspaceSymbols(params.query, clientSession.sourcePath)
+        val result = workspaceSymbols(params.query)
 
         return CompletableFuture.completedFuture(Either.forRight(result))
     }

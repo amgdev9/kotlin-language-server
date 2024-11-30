@@ -1,6 +1,7 @@
 package org.javacs.kt
 
 import com.intellij.lang.Language
+import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import org.jetbrains.kotlin.cli.common.environment.setIdeaIoUseFallback
@@ -36,7 +37,8 @@ import kotlin.concurrent.withLock
 class Compiler(
     private val outputDirectory: File,
 ) {
-    private val defaultCompileEnvironment = CompilationEnvironment()
+    private val disposable = Disposer.newDisposable()
+    private val compileEnvironment = buildKotlinCoreEnvironment(disposable)
     private val compileLock = ReentrantLock() // TODO: Lock at file-level
 
     companion object {
@@ -48,7 +50,7 @@ class Compiler(
     fun createPsiFile(content: String, file: Path, language: Language): PsiFile {
         assert(!content.contains('\r'))
 
-        val psiFileFactory = PsiFileFactory.getInstance(defaultCompileEnvironment.environment.project)
+        val psiFileFactory = PsiFileFactory.getInstance(compileEnvironment.project)
         val new = psiFileFactory.createFileFromText(file.toString(), language, content, true, false)
         assert(new.virtualFile != null)
 
@@ -63,7 +65,7 @@ class Compiler(
 
     fun compileKtFiles(files: Collection<KtFile>, sourcePath: Collection<KtFile>): Pair<BindingContext, ModuleDescriptor> {
         compileLock.withLock {
-            val compileEnv = defaultCompileEnvironment
+            val compileEnv = compileEnvironment
             val (container, trace) = compileEnv.createContainer(sourcePath)
             val module = container.getService(ModuleDescriptor::class.java)
             container.get<LazyTopDownAnalyzer>().analyzeDeclarations(TopDownAnalysisMode.TopLevelDeclarations, files)
@@ -75,8 +77,7 @@ class Compiler(
         try {
             // Use same lock as 'compileFile' to avoid concurrency issues
             compileLock.withLock {
-                val compileEnv = defaultCompileEnvironment
-                val (container, trace) = compileEnv.createContainer(sourcePath)
+                val (container, trace) = compileEnvironment.createContainer(sourcePath)
                 val incrementalCompiler = container.get<ExpressionTypingServices>()
                 incrementalCompiler.getTypeInfo(
                         scopeWithImports,
@@ -103,17 +104,16 @@ class Compiler(
         }
     }
 
-    fun generateCode(module: ModuleDescriptor, bindingContext: BindingContext, files: Collection<KtFile>) {
+    fun generateCode(module: ModuleDescriptor, bindingContext: BindingContext, files: List<KtFile>) {
         return  // TODO This crashes, test it
         compileLock.withLock {
-            val compileEnv = defaultCompileEnvironment
             val state = GenerationState.Builder(
-                project = compileEnv.environment.project,
+                project = compileEnvironment.project,
                 builderFactory = ClassBuilderFactories.BINARIES,
                 module = module,
                 bindingContext = bindingContext,
-                files = files.toList(),
-                configuration = compileEnv.environment.configuration
+                files = files,
+                configuration = compileEnvironment.configuration
             ).build()
             KotlinCodegenFacade.compileCorrectFiles(state)
             state.factory.writeAllTo(outputDirectory)
@@ -121,6 +121,6 @@ class Compiler(
     }
 
     fun close() {
-        defaultCompileEnvironment.close()
+        disposable.dispose()
     }
 }

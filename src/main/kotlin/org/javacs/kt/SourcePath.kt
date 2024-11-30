@@ -5,7 +5,6 @@ import org.javacs.kt.index.refreshIndex
 import org.javacs.kt.index.updateIndexes
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.describeURI
-import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.CompositeBindingContext
@@ -57,7 +56,11 @@ class SourcePath {
      */
     fun content(uri: URI): String = files[uri]!!.content
 
-    fun parsedFile(uri: URI): KtFile = files[uri]!!.apply { parseIfChanged() }.ktFile!!
+    fun parsedFile(uri: URI): KtFile {
+        val file = files[uri]!!
+        file.parseIfChanged()
+        return file.ktFile!!
+    }
 
     /**
      * Compile the latest version of a file
@@ -89,11 +92,11 @@ class SourcePath {
         return CompositeBindingContext.create(combined)
     }
 
-    private fun compileAndUpdate(changed: List<SourceFile>): BindingContext? {
-        if (changed.isEmpty()) return null
+    private fun compileAndUpdate(allChanged: List<SourceFile>): BindingContext? {
+        if (allChanged.isEmpty()) return null
 
         // Get clones of the old files, so we can remove the old declarations from the index
-        val oldFiles = changed.mapNotNull {
+        val oldFiles = allChanged.mapNotNull {
             if (it.compiledFile?.text != it.content || it.ktFile?.text != it.content) {
                 it.clone()
             } else {
@@ -102,7 +105,7 @@ class SourcePath {
         }
 
         // Parse the files that have changed
-        val parse = changed.associateWith { it.apply { parseIfChanged() }.ktFile!! }
+        val parse = allChanged.associateWith { it.apply { parseIfChanged() }.ktFile!! }
 
         // Get all the files. This will parse them if they changed
         val allFiles = all()
@@ -169,7 +172,8 @@ class SourcePath {
         val module = files.values.first { it.module != null }.module
         if (module == null) return
 
-        refreshDependencyIndexes(module)
+        val declarations = getDeclarationDescriptors(files.values)
+        refreshIndex(module, declarations)
     }
 
     /**
@@ -181,14 +185,6 @@ class SourcePath {
 
         // Index the new declarations in the Kotlin source files that were just compiled, removing the old ones
         updateIndexes(oldDeclarations, newDeclarations)
-    }
-
-    /**
-     * Refreshes the indexes. If already done, refreshes only the declarations in the files that were changed.
-     */
-    private fun refreshDependencyIndexes(module: ModuleDescriptor) = indexAsync.execute {
-        val declarations = getDeclarationDescriptors(files.values)
-        refreshIndex(module, declarations)
     }
 
     // Gets all the declaration descriptors for the collection of files
