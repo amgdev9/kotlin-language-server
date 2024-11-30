@@ -189,7 +189,7 @@ class SourcePath {
 
     // Gets all the declaration descriptors for the collection of files
     private fun getDeclarationDescriptors(files: Collection<SourceFile>) =
-        files.flatMap { file ->
+        files.asSequence().flatMap { file ->
             val compiledFile = file.compiledFile ?: file.ktFile
             val module = file.module
             if (compiledFile == null || module == null) return@flatMap emptyList()
@@ -197,8 +197,7 @@ class SourcePath {
             return@flatMap module.getPackage(compiledFile.packageFqName).memberScope.getContributedDescriptors(
                 DescriptorKindFilter.ALL
             ) { name -> compiledFile.declarations.map { it.name }.contains(name.toString()) }
-
-        }.asSequence()
+        }
 
     /**
      * Recompiles all source files that are initialized.
