@@ -19,7 +19,7 @@ import java.util.LinkedHashMap
  */
 fun classContentOf(uri: KlsURI): Pair<KlsURI, String> {
     LOG.info("Resolving {} for contents", uri)
-    val resolvedUri = (fetchJdkSourceArchive(uri.archivePath) ?: clientSession.classPath.classPath.firstOrNull { it.compiledJar == uri.archivePath }?.sourceJar)?.let(uri.withSource(true)::withArchivePath) ?: uri
+    val resolvedUri = (fetchJdkSourceArchive(uri.archivePath) ?: clientSession.projectClasspath.classPath.firstOrNull { it.compiledJar == uri.archivePath }?.sourceJar)?.let(uri.withSource(true)::withArchivePath) ?: uri
     val key = resolvedUri.toString()
     val (contents, extension) = cachedContents[key] ?: run {
         LOG.info("Reading contents of {}", describeURI(resolvedUri.fileUri))

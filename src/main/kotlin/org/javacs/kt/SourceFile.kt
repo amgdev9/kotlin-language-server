@@ -39,7 +39,7 @@ class SourceFile(
 
     fun parse() {
         // TODO: Create PsiFile using the stored language instead
-        parsed = clientSession.classPath.compiler.createKtFile(
+        parsed = clientSession.classPath.compiler!!.createKtFile(
             content,
             path ?: Paths.get("sourceFile.virtual.$extension")
         )
@@ -74,7 +74,7 @@ class SourceFile(
 
         val oldFile = clone()
 
-        val (context, module) = clientSession.classPath.compiler.compileKtFile(parsed!!, allIncludingThis())
+        val (context, module) = clientSession.classPath.compiler!!.compileKtFile(parsed!!, allIncludingThis())
         clientSession.sourcePath.parseDataWriteLock.withLock {
             compiledContext = context
             this.module = module

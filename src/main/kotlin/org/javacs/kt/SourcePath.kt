@@ -1,7 +1,6 @@
 package org.javacs.kt
 
 import com.intellij.lang.Language
-import org.javacs.kt.externalsources.contentOf
 import org.javacs.kt.index.refreshIndex
 import org.javacs.kt.index.updateIndexes
 import org.javacs.kt.util.AsyncExecutor
@@ -21,20 +20,7 @@ class SourcePath {
 
     private val indexAsync = AsyncExecutor()
 
-    private fun sourceFile(uri: URI): SourceFile {
-        if (uri !in files) {
-            // Fallback solution, usually *all* source files
-            // should be added/opened through SourceFiles
-            LOG.warn(
-                "Requested source file {} is not on source path, this is most likely a bug. Adding it now temporarily...",
-                describeURI(uri)
-            )
-            put(uri, contentOf(uri), null, temporary = true)
-        }
-        return files[uri]!!
-    }
-
-    fun put(uri: URI, content: String, language: Language?, temporary: Boolean = false) {
+    fun put(uri: URI, content: String, language: Language?, temporary: Boolean) {
         assert(!content.contains('\r'))
 
         if (temporary) {
@@ -42,14 +28,14 @@ class SourcePath {
         }
 
         if (uri in files) {
-            sourceFile(uri).put(content)
+            files[uri]!!.put(content)
         } else {
             files[uri] = SourceFile(uri, content, language = language, isTemporary = temporary)
         }
     }
 
     fun deleteIfTemporary(uri: URI): Boolean =
-        if (sourceFile(uri).isTemporary) {
+        if (files[uri]!!.isTemporary) {
             LOG.info("Removing temporary source file {} from source path", describeURI(uri))
             delete(uri)
             true
@@ -60,7 +46,7 @@ class SourcePath {
     fun delete(uri: URI) {
         files[uri]?.let {
             refreshWorkspaceIndexes(listOf(it), listOf())
-            clientSession.classPath.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
+            clientSession.classPath.compiler!!.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
         }
 
         files.remove(uri)
@@ -69,21 +55,21 @@ class SourcePath {
     /**
      * Get the latest content of a file
      */
-    fun content(uri: URI): String = sourceFile(uri).content
+    fun content(uri: URI): String = files[uri]!!.content
 
-    fun parsedFile(uri: URI): KtFile = sourceFile(uri).apply { parseIfChanged() }.parsed!!
+    fun parsedFile(uri: URI): KtFile = files[uri]!!.apply { parseIfChanged() }.parsed!!
 
     /**
      * Compile the latest version of a file
      */
     fun currentVersion(uri: URI): CompiledFile =
-        sourceFile(uri).apply { compileIfChanged() }.prepareCompiledFile()
+        files[uri]!!.apply { compileIfChanged() }.prepareCompiledFile()
 
     /**
      * Return whatever is the most-recent already-compiled version of `file`
      */
     fun latestCompiledVersion(uri: URI): CompiledFile =
-        sourceFile(uri).prepareCompiledFile()
+        files[uri]!!.prepareCompiledFile()
 
     /**
      * Compile changed files
@@ -120,7 +106,7 @@ class SourcePath {
 
         // Get all the files. This will parse them if they changed
         val allFiles = all()
-        val (context, module) = clientSession.classPath.compiler.compileKtFiles(parse.values, allFiles)
+        val (context, module) = clientSession.classPath.compiler!!.compileKtFiles(parse.values, allFiles)
 
         // Update cache
         for ((f, parsed) in parse) {
@@ -161,12 +147,12 @@ class SourcePath {
 
         // If the code generation fails for some reason, we generate code for the other files anyway
         try {
-            clientSession.classPath.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
+            clientSession.classPath.compiler!!.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
             val module = file.module
             val context = file.compiledContext
             if (module == null || context == null) return
 
-            clientSession.classPath.compiler.generateCode(module, context, listOfNotNull(file.compiledFile))
+            clientSession.classPath.compiler!!.generateCode(module, context, listOfNotNull(file.compiledFile))
             file.lastSavedFile = file.compiledFile
         } catch (ex: Exception) {
             LOG.printStackTrace(ex)

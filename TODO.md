@@ -1,3 +1,3 @@
-- Optimizar instanciación del compilador
+- Fusionar CompilerClassPath y SourceFiles
 - Optimizar indexado
 
