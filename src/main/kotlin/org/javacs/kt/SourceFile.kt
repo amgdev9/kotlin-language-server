@@ -39,7 +39,7 @@ class SourceFile(
 
     fun parse() {
         // TODO: Create PsiFile using the stored language instead
-        parsed = clientSession.sourceFiles.compiler!!.createKtFile(
+        parsed = clientSession.sourceFiles.compiler.createKtFile(
             content,
             path ?: Paths.get("sourceFile.virtual.$extension")
         )
@@ -51,17 +51,11 @@ class SourceFile(
         }
     }
 
-    fun compileIfNull() = parseIfChanged().apply { doCompileIfNull() }
-
-    private fun doCompileIfNull() {
-        if (compiledFile == null) {
-            doCompileIfChanged()
-        }
-    }
-
     fun compileIfChanged() {
         parseIfChanged()
-        doCompileIfChanged()
+        if (parsed?.text != compiledFile?.text) {
+            doCompile()
+        }
     }
 
     fun compile() {
@@ -74,7 +68,7 @@ class SourceFile(
 
         val oldFile = clone()
 
-        val (context, module) = clientSession.sourceFiles.compiler!!.compileKtFile(parsed!!, allIncludingThis())
+        val (context, module) = clientSession.sourceFiles.compiler.compileKtFile(parsed!!, allIncludingThis())
         clientSession.sourcePath.parseDataWriteLock.withLock {
             compiledContext = context
             this.module = module
@@ -84,23 +78,19 @@ class SourceFile(
         clientSession.sourcePath.refreshWorkspaceIndexes(listOfNotNull(oldFile), listOfNotNull(this))
     }
 
-    private fun doCompileIfChanged() {
-        if (parsed?.text != compiledFile?.text) {
+    fun prepareCompiledFile(): CompiledFile {
+        parseIfChanged()
+        if (compiledFile == null) {
             doCompile()
         }
-    }
-
-    fun prepareCompiledFile(): CompiledFile =
-        parseIfChanged().apply { compileIfNull() }.let { doPrepareCompiledFile() }
-
-    private fun doPrepareCompiledFile(): CompiledFile =
-        CompiledFile(
+        return CompiledFile(
             content,
             compiledFile!!,
             compiledContext!!,
             module!!,
             allIncludingThis()
         )
+    }
 
     private fun allIncludingThis(): Collection<KtFile> = parseIfChanged().let {
         if (isTemporary) (clientSession.sourcePath.all().asSequence() + sequenceOf(parsed!!)).toList()
