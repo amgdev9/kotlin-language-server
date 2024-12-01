@@ -1,7 +1,5 @@
 package org.javacs.kt
 
-import com.intellij.lang.Language
-import org.javacs.kt.util.fileExtension
 import org.javacs.kt.util.filePath
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
@@ -18,14 +16,9 @@ class SourceFile(
     var compiledFile: KtFile? = null,
     var compiledContext: BindingContext? = null,
     var module: ModuleDescriptor? = null,
-    val language: Language? = null,
     val isTemporary: Boolean = false, // A temporary source file will not be returned by .all()
     var lastSavedFile: KtFile? = null,
 ) {
-    fun put(newContent: String) {
-        content = newContent
-    }
-
     fun clean() {
         ktFile = null
         compiledFile = null
@@ -34,11 +27,9 @@ class SourceFile(
     }
 
     fun parse() {
-        // TODO: Create PsiFile using the stored language instead
-        val extension = uri.fileExtension ?: "kt" // TODO: Use language?.associatedFileType?.defaultExtension again
         ktFile = clientSession.sourceFiles.compiler.createKtFile(
             content,
-            uri.filePath ?: Paths.get("sourceFile.virtual.$extension")
+            uri.filePath ?: Paths.get("sourceFile.virtual.kt")
         )
     }
 
@@ -98,5 +89,5 @@ class SourceFile(
     }
 
     fun clone(): SourceFile =
-        SourceFile(uri, version, content, ktFile, compiledFile, compiledContext, module, language, isTemporary)
+        SourceFile(uri, version, content, ktFile, compiledFile, compiledContext, module, isTemporary)
 }

@@ -1,15 +1,13 @@
 package org.javacs.kt
 
-import com.intellij.lang.Language
 import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent
 import org.javacs.kt.externalsources.contentOf
-import org.javacs.kt.index.refreshIndex
+import org.javacs.kt.index.rebuildIndex
 import org.javacs.kt.index.updateIndexes
 import org.javacs.kt.util.AsyncExecutor
 import org.javacs.kt.util.describeURI
 import org.javacs.kt.util.filePath
-import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.CompositeBindingContext
@@ -53,7 +51,7 @@ class SourceFiles {
                 continue
             }
 
-            setSourceFile(uri, sourceFile)
+            sourceFiles[uri] = sourceFile
         }
 
         LOG.info("Searching java source files...")
@@ -70,10 +68,11 @@ class SourceFiles {
             LOG.info("Adding temporary source file {} to source path", describeURI(uri))
         }
 
-        if (uri in sourceFiles) {
-            sourceFiles[uri]!!.put(content)
+        val sourceFile = sourceFiles[uri]
+        if (sourceFile != null) {
+            sourceFile.content = content
         } else {
-            sourceFiles[uri] = SourceFile(uri = uri, version = source.version, content = content, language = source.language, isTemporary = source.isTemporary)
+            sourceFiles[uri] = SourceFile(uri = uri, version = source.version, content = content, isTemporary = source.isTemporary)
         }
     }
 
@@ -112,11 +111,11 @@ class SourceFiles {
     }
 
     fun openSourceFile(uri: URI, content: String, version: Int) {
-        setSourceFile(uri, SourceFile(uri = uri, content = content, version = version, language = languageOf(uri), isTemporary = false))
+        setSourceFile(uri, SourceFile(uri = uri, content = content, version = version, isTemporary = false))
         openFiles.add(uri)
     }
 
-    fun close(uri: URI) {
+    fun closeSourceFile(uri: URI) {
         if (uri !in openFiles) return
 
         openFiles.remove(uri)
@@ -153,7 +152,6 @@ class SourceFiles {
                 uri = existing.uri,
                 content = newText,
                 version = newVersion,
-                language = existing.language,
                 isTemporary = existing.isTemporary
             )
         )
@@ -178,8 +176,7 @@ class SourceFiles {
 
     fun changedOnDisk(uri: URI) {
         if (isKotlinSource(uri)) {
-            val sourceVersion = readFromDisk(uri, sourceFiles[uri]?.isTemporary == true)
-            if (sourceVersion == null) throw RuntimeException("Could not read source file '$uri' after being changed on disk")
+            val sourceVersion = readFromDisk(uri, sourceFiles[uri]?.isTemporary == true)!!
 
             setSourceFile(uri, sourceVersion)
         } else if(isJavaSource(uri.filePath!!)) {
@@ -191,7 +188,13 @@ class SourceFiles {
         LOG.info("Reinstantiating compiler")
         compiler.close()
         compiler = Compiler(outputDirectory)
-        refresh()
+
+        val initialized = sourceFiles.values.any { it.ktFile != null }
+        if (!initialized) return
+
+        LOG.info("Refreshing source path")
+        sourceFiles.values.forEach { it.clean() }
+        sourceFiles.values.forEach { it.compile() }
     }
 
     fun isOpen(uri: URI): Boolean = (uri in openFiles)
@@ -215,14 +218,18 @@ class SourceFiles {
     /**
      * Compile the latest version of a file
      */
-    fun currentVersion(uri: URI): CompiledFile =
-        sourceFiles[uri]!!.apply { compileIfChanged() }.prepareCompiledFile()
+    fun currentVersion(uri: URI): CompiledFile {
+        val sourceFile = sourceFiles[uri]!!
+        sourceFile.compileIfChanged()
+        return sourceFile.prepareCompiledFile()
+    }
 
     /**
      * Return whatever is the most-recent already-compiled version of `file`
      */
-    fun latestCompiledVersion(uri: URI): CompiledFile =
-        sourceFiles[uri]!!.prepareCompiledFile()
+    fun latestCompiledVersion(uri: URI): CompiledFile {
+        return sourceFiles[uri]!!.prepareCompiledFile()
+    }
 
     /**
      * Compile changed files
@@ -291,10 +298,7 @@ class SourceFiles {
         }
     }
 
-    /**
-     * Saves a file. This generates code for the file and deletes previously generated code for this file.
-     */
-    fun save(uri: URI) {
+    fun generateCodeForFile(uri: URI) {
         val file = sourceFiles[uri]!!
 
         // If the code generation fails for some reason, we generate code for the other files anyway
@@ -313,7 +317,7 @@ class SourceFiles {
     }
 
     fun saveAllFiles() {
-        sourceFiles.forEach { save(it.key) }
+        sourceFiles.forEach { generateCodeForFile(it.key) }
     }
 
     fun refreshDependencyIndexes() {
@@ -323,7 +327,7 @@ class SourceFiles {
         if (module == null) return
 
         val declarations = getDeclarationDescriptors(sourceFiles.values)
-        refreshIndex(module, declarations)
+        rebuildIndex(module, declarations)
     }
 
     /**
@@ -350,18 +354,6 @@ class SourceFiles {
         }.asSequence()
 
     /**
-     * Recompiles all source files that are initialized.
-     */
-    fun refresh() {
-        val initialized = sourceFiles.values.any { it.ktFile != null }
-        if (!initialized) return
-
-        LOG.info("Refreshing source path")
-        sourceFiles.values.forEach { it.clean() }
-        sourceFiles.values.forEach { it.compile() }
-    }
-
-    /**
      * Get parsed trees for all .kt files on source path
      */
     fun all(includeHidden: Boolean = false): Collection<KtFile> =
@@ -374,7 +366,7 @@ class SourceFiles {
 
 private fun readFromDisk(uri: URI, temporary: Boolean): SourceFile? = try {
     val content = contentOf(uri)
-    SourceFile(uri = uri, version = -1, content = content, language = languageOf(uri), isTemporary = temporary)
+    SourceFile(uri = uri, version = -1, content = convertLineSeparators(content), isTemporary = temporary)
 } catch (_: FileNotFoundException) {
     null
 } catch (_: IOException) {
@@ -424,9 +416,3 @@ private fun patch(sourceText: String, change: TextDocumentContentChangeEvent): S
 
 private fun isKotlinSource(uri: URI): Boolean = uri.filePath?.fileName?.toString()?.endsWith(".kt") == true
 private fun isJavaSource(file: Path): Boolean = file.fileName.toString().endsWith(".java")
-
-private fun languageOf(uri: URI): Language? {
-    val fileName = uri.filePath?.fileName?.toString() ?: return null
-    if (fileName.endsWith(".kt")) return KotlinLanguage.INSTANCE
-    return null
-}

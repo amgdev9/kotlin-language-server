@@ -110,7 +110,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         val uri = parseURI(params.textDocument.uri)
         lintNow(uri)
         debounceLint.schedule {
-            clientSession.sourceFiles.save(uri)
+            clientSession.sourceFiles.generateCodeForFile(uri)
         }
     }
 
@@ -123,7 +123,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     override fun didClose(params: DidCloseTextDocumentParams) {
         val uri = parseURI(params.textDocument.uri)
-        clientSession.sourceFiles.close(uri)
+        clientSession.sourceFiles.closeSourceFile(uri)
         clearDiagnostics(uri)
     }
 

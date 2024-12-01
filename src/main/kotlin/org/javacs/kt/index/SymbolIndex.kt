@@ -12,7 +12,7 @@ import org.jetbrains.kotlin.resolve.scopes.DescriptorKindFilter
 import kotlin.sequences.Sequence
 
 /** Rebuilds the entire index. May take a while. */
-fun refreshIndex(module: ModuleDescriptor, exclusions: Sequence<DeclarationDescriptor>) {
+fun rebuildIndex(module: ModuleDescriptor, exclusions: Sequence<DeclarationDescriptor>) {
     LOG.info("Updating full symbol index...")
 
     try {
