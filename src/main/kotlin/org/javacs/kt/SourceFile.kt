@@ -12,6 +12,7 @@ import kotlin.concurrent.withLock
 
 class SourceFile(
     val uri: URI,
+    val version: Int,
     var content: String,
     var ktFile: KtFile? = null,
     var compiledFile: KtFile? = null,
@@ -97,5 +98,5 @@ class SourceFile(
     }
 
     fun clone(): SourceFile =
-        SourceFile(uri, content, ktFile, compiledFile, compiledContext, module, language, isTemporary)
+        SourceFile(uri, version, content, ktFile, compiledFile, compiledContext, module, language, isTemporary)
 }

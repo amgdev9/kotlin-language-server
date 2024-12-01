@@ -25,8 +25,6 @@ import kotlin.streams.asSequence
 
 val javaHome: String? = System.getProperty("java.home", null)
 
-private class SourceVersion(val content: String, val version: Int, val language: Language?, val isTemporary: Boolean)
-
 /**
  * Keep track of the text of all files in the workspace
  */
@@ -34,7 +32,6 @@ class SourceFiles {
     lateinit var compiler: Compiler
         private set
 
-    private val sourceVersionFiles = mutableMapOf<URI, SourceVersion>()
     private val sourceFiles = mutableMapOf<URI, SourceFile>()
     private val openFiles = mutableSetOf<URI>()
     private val javaSourcePath = mutableSetOf<Path>()
@@ -66,15 +63,21 @@ class SourceFiles {
         compiler = Compiler(outputDirectory)
     }
 
-    private fun setSourceVersion(uri: URI, source: SourceVersion) {
+    private fun setSourceVersion(uri: URI, source: SourceFile) {
         val content = convertLineSeparators(source.content)
 
-        sourceVersionFiles[uri] = source
-        putSourceFile(uri, content, source.language, source.isTemporary)
+        if (source.isTemporary) {
+            LOG.info("Adding temporary source file {} to source path", describeURI(uri))
+        }
+
+        if (uri in sourceFiles) {
+            sourceFiles[uri]!!.put(content)
+        } else {
+            sourceFiles[uri] = SourceFile(uri = uri, version = source.version, content = content, language = source.language, isTemporary = source.isTemporary)
+        }
     }
 
     fun removeSourceVersion(uri: URI) {
-        sourceVersionFiles.remove(uri)
         deleteSourceFile(uri)
     }
 
@@ -82,7 +85,6 @@ class SourceFiles {
         if (sourceFiles[uri]!!.isTemporary) {
             LOG.info("Removing temporary source file {} from source path", describeURI(uri))
             deleteSourceFile(uri)
-            sourceVersionFiles.remove(uri)
             return true
         } else {
             return false
@@ -116,7 +118,7 @@ class SourceFiles {
     }
 
     fun openSourceFile(uri: URI, content: String, version: Int) {
-        setSourceVersion(uri, SourceVersion(content, version, languageOf(uri), isTemporary = false))
+        setSourceVersion(uri, SourceFile(uri = uri, content = content, version = version, language = languageOf(uri), isTemporary = false))
         openFiles.add(uri)
     }
 
@@ -137,8 +139,8 @@ class SourceFiles {
     }
 
     fun edit(uri: URI, newVersion: Int, contentChanges: List<TextDocumentContentChangeEvent>) {
-        val existing = sourceVersionFiles[uri]
-        if(existing == null) return
+        val existing = sourceFiles[uri]
+        if (existing == null) return
 
         var newText = existing.content
 
@@ -152,7 +154,16 @@ class SourceFiles {
             else newText = patch(newText, change)
         }
 
-        setSourceVersion(uri, SourceVersion(newText, newVersion, existing.language, existing.isTemporary))
+        setSourceVersion(
+            uri,
+            SourceFile(
+                uri = existing.uri,
+                content = newText,
+                version = newVersion,
+                language = existing.language,
+                isTemporary = existing.isTemporary
+            )
+        )
     }
 
     fun createdOnDisk(uri: URI) {
@@ -165,7 +176,7 @@ class SourceFiles {
 
     fun deletedOnDisk(uri: URI) {
         if (isKotlinSource(uri)) {
-            sourceVersionFiles.remove(uri)
+            sourceFiles.remove(uri)
         } else if (isJavaSource(uri.filePath!!)) {
             javaSourcePath.remove(uri.filePath!!)
             refreshCompilerAndSourcePath()
@@ -174,7 +185,7 @@ class SourceFiles {
 
     fun changedOnDisk(uri: URI) {
         if (isKotlinSource(uri)) {
-            val sourceVersion = readFromDisk(uri, sourceVersionFiles[uri]?.isTemporary == true)
+            val sourceVersion = readFromDisk(uri, sourceFiles[uri]?.isTemporary == true)
             if (sourceVersion == null) throw RuntimeException("Could not read source file '$uri' after being changed on disk")
 
             setSourceVersion(uri, sourceVersion)
@@ -206,20 +217,6 @@ class SourceFiles {
         val file = sourceFiles[uri]!!
         file.parseIfChanged()
         return file.ktFile!!
-    }
-
-    fun putSourceFile(uri: URI, content: String, language: Language?, temporary: Boolean) {
-        assert(!content.contains('\r'))
-
-        if (temporary) {
-            LOG.info("Adding temporary source file {} to source path", describeURI(uri))
-        }
-
-        if (uri in sourceFiles) {
-            sourceFiles[uri]!!.put(content)
-        } else {
-            sourceFiles[uri] = SourceFile(uri, content, language = language, isTemporary = temporary)
-        }
     }
 
     /**
@@ -382,9 +379,9 @@ class SourceFiles {
             .toList()
 }
 
-private fun readFromDisk(uri: URI, temporary: Boolean): SourceVersion? = try {
+private fun readFromDisk(uri: URI, temporary: Boolean): SourceFile? = try {
     val content = contentOf(uri)
-    SourceVersion(content, -1, languageOf(uri), isTemporary = temporary)
+    SourceFile(uri = uri, version = -1, content = content, language = languageOf(uri), isTemporary = temporary)
 } catch (_: FileNotFoundException) {
     null
 } catch (_: IOException) {
