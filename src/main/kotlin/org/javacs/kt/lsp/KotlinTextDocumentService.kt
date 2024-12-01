@@ -10,6 +10,7 @@ import org.javacs.kt.actions.completion.completions
 import org.javacs.kt.clientSession
 import org.javacs.kt.codeaction.codeActions
 import org.javacs.kt.util.*
+import org.jetbrains.kotlin.diagnostics.rendering.DefaultErrorMessages
 import org.jetbrains.kotlin.resolve.diagnostics.Diagnostics
 import java.io.Closeable
 import java.net.URI
@@ -199,6 +200,9 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 }
 
 private fun reportDiagnostics(compiled: Collection<URI>, kotlinDiagnostics: Diagnostics) {
+    kotlinDiagnostics.forEach {
+        LOG.info("${it.factoryName}, ${DefaultErrorMessages.render(it)}")
+    }
     val byFile = kotlinDiagnostics
         .flatMap(::convertDiagnostic)
         .groupBy({ it.first }, { it.second })

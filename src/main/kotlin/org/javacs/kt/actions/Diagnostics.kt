@@ -32,14 +32,14 @@ fun convertDiagnostic(diagnostic: KotlinDiagnostic): List<Pair<URI, LangServerDi
 }
 
 private fun code(diagnostic: KotlinDiagnostic) =
-        diagnostic.factory.name
+    diagnostic.factory.name
 
 private fun message(diagnostic: KotlinDiagnostic) =
-        DefaultErrorMessages.render(diagnostic)
+    DefaultErrorMessages.render(diagnostic)
 
 private fun severity(severity: Severity): DiagnosticSeverity =
-        when (severity) {
-            Severity.INFO -> DiagnosticSeverity.Information
-            Severity.ERROR -> DiagnosticSeverity.Error
-            Severity.WARNING -> DiagnosticSeverity.Warning
-        }
+    when (severity) {
+        Severity.INFO -> DiagnosticSeverity.Information
+        Severity.ERROR -> DiagnosticSeverity.Error
+        Severity.WARNING -> DiagnosticSeverity.Warning
+    }

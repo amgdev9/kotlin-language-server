@@ -31,6 +31,21 @@ fun rebuildIndex(module: ModuleDescriptor, exclusions: Sequence<DeclarationDescr
     }
 }
 
+private fun allDescriptors(module: ModuleDescriptor, exclusions: Sequence<DeclarationDescriptor>): Sequence<DeclarationDescriptor> {
+    return allPackages(module, FqName.ROOT)
+        .map(module::getPackage)
+        .flatMap {
+            try {
+                it.memberScope.getContributedDescriptors(
+                    DescriptorKindFilter.ALL
+                ) { name -> !exclusions.any { declaration -> declaration.name == name } }
+            } catch (_: IllegalStateException) {
+                LOG.warn("Could not query descriptors in package $it")
+                emptyList()
+            }
+        }
+}
+
 // Removes a list of indexes and adds another list. Everything is done in the same transaction.
 fun updateIndexes(remove: Sequence<DeclarationDescriptor>, add: Sequence<DeclarationDescriptor>) {
     LOG.info("Updating symbol index...")
@@ -105,18 +120,5 @@ fun queryIndex(prefix: String, receiverType: FqName? = null, limit: Int = 20, su
         }
 }
 
-private fun allDescriptors(module: ModuleDescriptor, exclusions: Sequence<DeclarationDescriptor>): Sequence<DeclarationDescriptor> = allPackages(module)
-    .map(module::getPackage)
-    .flatMap {
-        try {
-            it.memberScope.getContributedDescriptors(
-                DescriptorKindFilter.ALL
-            ) { name -> !exclusions.any { declaration -> declaration.name == name } }
-        } catch (_: IllegalStateException) {
-            LOG.warn("Could not query descriptors in package $it")
-            emptyList()
-        }
-    }
-
-private fun allPackages(module: ModuleDescriptor, pkgName: FqName = FqName.ROOT): Sequence<FqName> = module
+private fun allPackages(module: ModuleDescriptor, pkgName: FqName): Sequence<FqName> = module
     .getSubPackagesOf(pkgName) { it.toString() != "META-INF" }.asSequence().flatMap { sequenceOf(it) + allPackages(module, it) }

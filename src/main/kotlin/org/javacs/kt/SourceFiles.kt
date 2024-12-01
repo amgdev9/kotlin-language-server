@@ -67,7 +67,6 @@ class SourceFiles {
         }
 
         val module = sourceFiles.values.first { it.compilationResult != null }.compilationResult!!.module
-
         val declarations = getDeclarationDescriptors(sourceFiles.values)
         rebuildIndex(module, declarations)
     }
@@ -304,7 +303,7 @@ class SourceFiles {
         val allFiles = all()
         val (context, module) = clientSession.sourceFiles.compiler.compileKtFiles(parsedKtFiles.values, allFiles)
 
-        // Update cache
+        // Update compilation result
         for ((sourceFile, ktFile) in parsedKtFiles) {
             parseDataWriteLock.withLock {
                 if (sourceFile.ktFile == ktFile) {
