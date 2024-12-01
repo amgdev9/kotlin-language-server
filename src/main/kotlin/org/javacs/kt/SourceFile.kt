@@ -50,21 +50,7 @@ class SourceFile(
         clientSession.sourceFiles.refreshWorkspaceIndexes(listOf(oldFile), listOf(this))
     }
 
-    fun prepareCompiledFile(): CompiledFile {
-        parseIfChanged()
-        if (compilationResult == null) {
-            compile()
-        }
-        return CompiledFile(
-            content = content,
-            parse = compilationResult!!.compiledFile,
-            compile = compilationResult!!.compiledContext,
-            module = compilationResult!!.module,
-            allIncludingThis()
-        )
-    }
-
-    private fun allIncludingThis(): Collection<KtFile> {
+    fun allIncludingThis(): Collection<KtFile> {
         parseIfChanged()
         if (isTemporary) {
             return (clientSession.sourceFiles.all().asSequence() + sequenceOf(ktFile!!)).toList()

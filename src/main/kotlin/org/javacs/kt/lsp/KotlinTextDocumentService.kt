@@ -130,7 +130,9 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     override fun didChange(params: DidChangeTextDocumentParams) {
         val uri = parseURI(params.textDocument.uri)
         clientSession.sourceFiles.edit(uri, params.textDocument.version, params.contentChanges)
-        lintLater(uri)
+
+        lintTodo.add(uri)
+        debounceLint.schedule(::doLint)
     }
 
     override fun references(position: ReferenceParams) = async.compute {
@@ -179,17 +181,6 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         }
     }
 
-    private fun clearLint(): List<URI> {
-        val result = lintTodo.toList()
-        lintTodo.clear()
-        return result
-    }
-
-    private fun lintLater(uri: URI) {
-        lintTodo.add(uri)
-        debounceLint.schedule(::doLint)
-    }
-
     private fun lintNow(file: URI) {
         lintTodo.add(file)
         debounceLint.submitImmediately(::doLint)
@@ -197,7 +188,8 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     private fun doLint(cancelCallback: () -> Boolean) {
         LOG.info("Linting {}", "${lintTodo.size} files")
-        val files = clearLint()
+        val files = lintTodo.toList()
+        lintTodo.clear()
         val context = clientSession.sourceFiles.compileFiles(files)
         if (!cancelCallback.invoke()) {
             reportDiagnostics(files, context.diagnostics)

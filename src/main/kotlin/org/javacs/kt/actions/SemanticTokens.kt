@@ -59,8 +59,18 @@ fun encodedSemanticTokens(file: CompiledFile, range: Range? = null): List<Int> =
  * Computes semantic tokens for the given range in the document.
  * No range means the entire document.
  */
-fun semanticTokens(file: CompiledFile, range: Range? = null): Sequence<SemanticToken> =
-    elementTokens(file.parse, file.compile, range)
+private fun semanticTokens(file: CompiledFile, range: Range? = null): Sequence<SemanticToken> {
+    val element = file.parse
+    val bindingContext = file.compile
+    val file = element.containingFile
+    val textRange = range?.let { TextRange(offset(file.text, it.start), offset(file.text, it.end)) }
+    return element
+        // TODO: Ideally we would like to cut-off subtrees outside our range, but this doesn't quite seem to work
+        // .preOrderTraversal { elem -> textRange?.let { it.contains(elem.textRange) } ?: true }
+        .preOrderTraversal()
+        .filter { elem -> textRange?.contains(elem.textRange) != false }
+        .mapNotNull { elementToken(it, bindingContext) }
+}
 
 private fun encodeTokens(tokens: Sequence<SemanticToken>): List<Int> {
     val encoded = mutableListOf<Int>()
@@ -92,17 +102,6 @@ private fun encodeModifiers(modifiers: Set<SemanticTokenModifier>): Int = modifi
     .asSequence()
     .map { 1 shl it.ordinal }
     .fold(0, Int::or)
-
-private fun elementTokens(element: PsiElement, bindingContext: BindingContext, range: Range? = null): Sequence<SemanticToken> {
-    val file = element.containingFile
-    val textRange = range?.let { TextRange(offset(file.text, it.start), offset(file.text, it.end)) }
-    return element
-        // TODO: Ideally we would like to cut-off subtrees outside our range, but this doesn't quite seem to work
-        // .preOrderTraversal { elem -> textRange?.let { it.contains(elem.textRange) } ?: true }
-        .preOrderTraversal()
-        .filter { elem -> textRange?.contains(elem.textRange) != false }
-        .mapNotNull { elementToken(it, bindingContext) }
-}
 
 private fun elementToken(element: PsiElement, bindingContext: BindingContext): SemanticToken? {
     val file = element.containingFile

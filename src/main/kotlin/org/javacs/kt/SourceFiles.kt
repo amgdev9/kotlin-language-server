@@ -240,14 +240,31 @@ class SourceFiles {
         if (sourceFile.ktFile?.text != sourceFile.compilationResult?.compiledFile?.text) {
             sourceFile.compile()
         }
-        return sourceFile.prepareCompiledFile()
+        return CompiledFile(
+            content = sourceFile.content,
+            parse = sourceFile.compilationResult!!.compiledFile,
+            compile = sourceFile.compilationResult!!.compiledContext,
+            module = sourceFile.compilationResult!!.module,
+            sourcePath = sourceFile.allIncludingThis()
+        )
     }
 
     /**
      * Return whatever is the most-recent already-compiled version of `file`
      */
     fun latestCompiledVersion(uri: URI): CompiledFile {
-        return sourceFiles[uri]!!.prepareCompiledFile()
+        val sourceFile = sourceFiles[uri]!!
+        sourceFile.parseIfChanged()
+        if (sourceFile.compilationResult == null) {
+            sourceFile.compile()
+        }
+        return CompiledFile(
+            content = sourceFile.content,
+            parse = sourceFile.compilationResult!!.compiledFile,
+            compile = sourceFile.compilationResult!!.compiledContext,
+            module = sourceFile.compilationResult!!.module,
+            sourcePath = sourceFile.allIncludingThis()
+        )
     }
 
     /**
