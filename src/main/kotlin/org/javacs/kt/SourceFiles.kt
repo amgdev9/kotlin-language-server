@@ -56,14 +56,23 @@ class SourceFiles {
     }
 
     fun lintAll() {
-        compileAllFiles()
+        // TODO: Investigate the possibility of compiling all files at once, instead of iterating here
+        // At the moment, compiling all files at once sometimes leads to an internal error from the TopDownAnalyzer
+        sourceFiles.forEach {
+            // If one of the files fails to compile, we compile the others anyway
+            try {
+                compileAndUpdate(listOf(it.value))
+            } catch (ex: Exception) {
+                LOG.printStackTrace(ex)
+            }
+        }
+
         sourceFiles.forEach { generateCodeForFile(it.key) }
 
-        val module = sourceFiles.values.first { it.module != null }.module
-        if (module == null) return
+        val compResult = sourceFiles.values.first { it.compilationResult != null }.compilationResult!!
 
         val declarations = getDeclarationDescriptors(sourceFiles.values)
-        rebuildIndex(module, declarations)
+        rebuildIndex(compResult.module, declarations)
     }
 
     private fun setSourceFile(uri: URI, source: SourceFile) {
@@ -229,7 +238,7 @@ class SourceFiles {
     fun currentVersion(uri: URI): CompiledFile {
         val sourceFile = sourceFiles[uri]!!
         sourceFile.parseIfChanged()
-        if (sourceFile.ktFile?.text != sourceFile.compiledFile?.text) {
+        if (sourceFile.ktFile?.text != sourceFile.compilationResult?.compiledFile?.text) {
             sourceFile.compile()
         }
         return sourceFile.prepareCompiledFile()
@@ -248,14 +257,14 @@ class SourceFiles {
     fun compileFiles(all: Collection<URI>): BindingContext {
         // Figure out what has changed
         val sources = all.map { sourceFiles[it]!! }
-        val allChanged = sources.filter { it.content != it.compiledFile?.text }
+        val allChanged = sources.filter { it.content != it.compilationResult?.compiledFile?.text }
 
         // Compile changed files
         val sourcesContext = compileAndUpdate(allChanged)
 
         // Combine with past compilations
         val same = sources - allChanged
-        val combined = listOfNotNull(sourcesContext) + same.map { it.compiledContext!! }
+        val combined = listOfNotNull(sourcesContext) + same.map { it.compilationResult!!.compiledContext }
 
         return CompositeBindingContext.create(combined)
     }
@@ -265,7 +274,7 @@ class SourceFiles {
 
         // Get clones of the old files, so we can remove the old declarations from the index
         val oldFiles = allChanged.mapNotNull {
-            if (it.compiledFile?.text != it.content || it.ktFile?.text != it.content) {
+            if (it.compilationResult?.compiledFile?.text != it.content || it.ktFile?.text != it.content) {
                 it.clone()
             } else {
                 null
@@ -287,9 +296,8 @@ class SourceFiles {
             parseDataWriteLock.withLock {
                 if (sourceFile.ktFile == ktFile) {
                     //only updated if the parsed file didn't change:
-                    sourceFile.compiledFile = ktFile
-                    sourceFile.compiledContext = context
-                    sourceFile.module = module
+                    sourceFile.compilationResult =
+                        CompilationResult(compiledFile = ktFile, compiledContext = context, module = module)
                 }
             }
         }
@@ -299,32 +307,18 @@ class SourceFiles {
         return context
     }
 
-    private fun compileAllFiles() {
-        // TODO: Investigate the possibility of compiling all files at once, instead of iterating here
-        // At the moment, compiling all files at once sometimes leads to an internal error from the TopDownAnalyzer
-        sourceFiles.forEach {
-            // If one of the files fails to compile, we compile the others anyway
-            try {
-                compileAndUpdate(listOf(it.value))
-            } catch (ex: Exception) {
-                LOG.printStackTrace(ex)
-            }
-        }
-    }
-
     fun generateCodeForFile(uri: URI) {
         val file = sourceFiles[uri]!!
 
         // If the code generation fails for some reason, we generate code for the other files anyway
         try {
-            val module = file.module
-            val context = file.compiledContext
-            if (module == null || context == null) return
+            val compResult = file.compilationResult
+            if (compResult == null) return
 
             clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
-            clientSession.sourceFiles.compiler.generateCode(module, context, listOfNotNull(file.compiledFile))
+            clientSession.sourceFiles.compiler.generateCode(compResult.module, compResult.compiledContext, listOfNotNull(compResult.compiledFile))
 
-            file.lastSavedFile = file.compiledFile
+            file.lastSavedFile = compResult.compiledFile
         } catch (ex: Exception) {
             LOG.printStackTrace(ex)
         }
@@ -344,9 +338,11 @@ class SourceFiles {
     // Gets all the declaration descriptors for the collection of files
     private fun getDeclarationDescriptors(files: Collection<SourceFile>) =
         files.flatMap { file ->
-            val compiledFile = file.compiledFile ?: file.ktFile
-            val module = file.module
-            if (compiledFile == null || module == null) return@flatMap emptyList()
+            val compResult = file.compilationResult
+            if(compResult == null) return@flatMap emptyList()
+
+            val compiledFile = compResult.compiledFile
+            val module = compResult.module
 
             return@flatMap module.getPackage(compiledFile.packageFqName).memberScope.getContributedDescriptors(
                 DescriptorKindFilter.ALL

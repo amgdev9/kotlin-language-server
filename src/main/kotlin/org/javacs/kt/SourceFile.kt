@@ -1,6 +1,7 @@
 package org.javacs.kt
 
 import org.javacs.kt.util.filePath
+import org.jetbrains.kotlin.backend.common.compilationException
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext
@@ -8,22 +9,20 @@ import java.net.URI
 import java.nio.file.Paths
 import kotlin.concurrent.withLock
 
+data class CompilationResult(val compiledFile: KtFile, val compiledContext: BindingContext, val module: ModuleDescriptor)
+
 class SourceFile(
     val uri: URI,
     val version: Int,
     var content: String,
     var ktFile: KtFile? = null,
-    var compiledFile: KtFile? = null,
-    var compiledContext: BindingContext? = null,
-    var module: ModuleDescriptor? = null,
+    var compilationResult: CompilationResult? = null,
     val isTemporary: Boolean = false, // A temporary source file will not be returned by .all()
     var lastSavedFile: KtFile? = null,
 ) {
     fun clean() {
         ktFile = null
-        compiledFile = null
-        compiledContext = null
-        module = null
+        compilationResult = null
     }
 
     fun parse() {
@@ -46,9 +45,7 @@ class SourceFile(
 
         val (context, module) = clientSession.sourceFiles.compiler.compileKtFile(ktFile!!, allIncludingThis())
         clientSession.sourceFiles.parseDataWriteLock.withLock {
-            compiledContext = context
-            this.module = module
-            compiledFile = ktFile
+            compilationResult = CompilationResult(compiledContext = context, module = module, compiledFile = ktFile!!)
         }
 
         clientSession.sourceFiles.refreshWorkspaceIndexes(listOf(oldFile), listOf(this))
@@ -56,14 +53,14 @@ class SourceFile(
 
     fun prepareCompiledFile(): CompiledFile {
         parseIfChanged()
-        if (compiledFile == null) {
+        if (compilationResult == null) {
             compile()
         }
         return CompiledFile(
-            content,
-            compiledFile!!,
-            compiledContext!!,
-            module!!,
+            content = content,
+            parse = compilationResult!!.compiledFile,
+            compile = compilationResult!!.compiledContext,
+            module = compilationResult!!.module,
             allIncludingThis()
         )
     }
@@ -77,5 +74,5 @@ class SourceFile(
     }
 
     fun clone(): SourceFile =
-        SourceFile(uri, version, content, ktFile, compiledFile, compiledContext, module, isTemporary)
+        SourceFile(uri, version, content, ktFile, compilationResult, isTemporary)
 }
