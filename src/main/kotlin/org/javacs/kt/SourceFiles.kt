@@ -52,7 +52,7 @@ class SourceFiles {
         javaSourcePath.addAll(findJavaSourceFiles(clientSession.projectClasspath.javaSourceDirs))
 
         LOG.info("Instantiating compiler...")
-        compiler = Compiler(outputDirectory)
+        compiler = Compiler()
     }
 
     fun lintAll() {
@@ -65,8 +65,6 @@ class SourceFiles {
                 LOG.printStackTrace(ex) // If one of the files fails to compile, we compile the others anyway
             }
         }
-
-        sourceFiles.forEach { generateCodeForFile(it.key) }
 
         val module = sourceFiles.values.first { it.compilationResult != null }.compilationResult!!.module
 
@@ -92,7 +90,6 @@ class SourceFiles {
     fun removeSourceFile(uri: URI) {
         sourceFiles[uri]?.let {
             refreshWorkspaceIndexes(listOf(it), emptyList())
-            clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
         }
 
         sourceFiles.remove(uri)
@@ -200,7 +197,7 @@ class SourceFiles {
     private fun refreshCompilerAndSourcePath() {
         LOG.info("Reinstantiating compiler")
         compiler.close()
-        compiler = Compiler(outputDirectory)
+        compiler = Compiler()
 
         val initialized = sourceFiles.values.any { it.ktFile != null }
         if (!initialized) return
@@ -321,23 +318,6 @@ class SourceFiles {
         refreshWorkspaceIndexes(oldFiles, parsedKtFiles.keys.toList())
 
         return context
-    }
-
-    fun generateCodeForFile(uri: URI) {
-        val file = sourceFiles[uri]!!
-
-        // If the code generation fails for some reason, we generate code for the other files anyway
-        try {
-            val compResult = file.compilationResult
-            if (compResult == null) return
-
-            clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
-            clientSession.sourceFiles.compiler.generateCode(compResult.module, compResult.compiledContext, listOfNotNull(compResult.compiledFile))
-
-            file.lastSavedFile = compResult.compiledFile
-        } catch (ex: Exception) {
-            LOG.printStackTrace(ex)
-        }
     }
 
     /**

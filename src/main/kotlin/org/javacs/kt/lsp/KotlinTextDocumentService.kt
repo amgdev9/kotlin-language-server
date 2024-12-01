@@ -108,9 +108,6 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         // Lint after saving to prevent inconsistent diagnostics
         val uri = parseURI(params.textDocument.uri)
         lintNow(uri)
-        debounceLint.schedule {
-            clientSession.sourceFiles.generateCodeForFile(uri)
-        }
     }
 
     override fun signatureHelp(position: SignatureHelpParams): CompletableFuture<SignatureHelp?> = async.compute {

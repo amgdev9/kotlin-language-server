@@ -5,10 +5,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import org.jetbrains.kotlin.cli.common.environment.setIdeaIoUseFallback
-import org.jetbrains.kotlin.cli.common.output.writeAllTo
-import org.jetbrains.kotlin.codegen.ClassBuilderFactories
-import org.jetbrains.kotlin.codegen.KotlinCodegenFacade
-import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.container.ComponentProvider
 import org.jetbrains.kotlin.container.get
 import org.jetbrains.kotlin.container.getService
@@ -25,7 +21,6 @@ import org.jetbrains.kotlin.resolve.scopes.LexicalScope
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.expressions.ExpressionTypingServices
 import org.jetbrains.kotlin.util.KotlinFrontEndException
-import java.io.File
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -34,9 +29,7 @@ import kotlin.concurrent.withLock
  * Incrementally compiles files and expressions.
  * The basic strategy for compiling one file at-a-time is outlined in OneFilePerformance.
  */
-class Compiler(
-    private val outputDirectory: File,
-) {
+class Compiler {
     private val disposable = Disposer.newDisposable()
     private val compileEnvironment = buildKotlinCoreEnvironment(disposable)
     private val compileLock = ReentrantLock() // TODO: Lock at file-level
@@ -92,32 +85,6 @@ class Compiler(
             }
         } catch (e: KotlinFrontEndException) {
             throw RuntimeException("Error while analyzing: ${expression.text}", e)
-        }
-    }
-
-    fun removeGeneratedCode(files: Collection<KtFile>) {
-        files.forEach { file ->
-            file.declarations.forEach { declaration ->
-                outputDirectory.resolve(
-                    file.packageFqName.asString().replace(".", File.separator) + File.separator + declaration.name + ".class"
-                ).delete()
-            }
-        }
-    }
-
-    fun generateCode(module: ModuleDescriptor, bindingContext: BindingContext, files: List<KtFile>) {
-        return  // TODO This crashes, test it
-        compileLock.withLock {
-            val state = GenerationState.Builder(
-                project = compileEnvironment.project,
-                builderFactory = ClassBuilderFactories.BINARIES,
-                module = module,
-                bindingContext = bindingContext,
-                files = files,
-                configuration = compileEnvironment.configuration
-            ).build()
-            KotlinCodegenFacade.compileCorrectFiles(state)
-            state.factory.writeAllTo(outputDirectory)
         }
     }
 
