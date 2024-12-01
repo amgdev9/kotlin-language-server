@@ -1,7 +1,6 @@
 package org.javacs.kt
 
 import org.javacs.kt.util.filePath
-import org.jetbrains.kotlin.backend.common.compilationException
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.BindingContext

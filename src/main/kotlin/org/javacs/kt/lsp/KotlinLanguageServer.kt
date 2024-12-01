@@ -25,7 +25,7 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
 
     private lateinit var client: LanguageClient
 
-    private val async = AsyncExecutor()
+    private val async = AsyncExecutor("init")
 
     override fun connect(client: LanguageClient) {
         this.client = client

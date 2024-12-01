@@ -35,7 +35,7 @@ class SourceFiles {
     private val javaSourcePath = mutableSetOf<Path>()
     private val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
     val parseDataWriteLock = ReentrantLock()
-    private val indexAsync = AsyncExecutor()
+    private val indexAsync = AsyncExecutor("index")
 
     fun setup() {
         LOG.info("Searching kotlin source files...")
@@ -59,20 +59,19 @@ class SourceFiles {
         // TODO: Investigate the possibility of compiling all files at once, instead of iterating here
         // At the moment, compiling all files at once sometimes leads to an internal error from the TopDownAnalyzer
         sourceFiles.forEach {
-            // If one of the files fails to compile, we compile the others anyway
             try {
                 compileAndUpdate(listOf(it.value))
             } catch (ex: Exception) {
-                LOG.printStackTrace(ex)
+                LOG.printStackTrace(ex) // If one of the files fails to compile, we compile the others anyway
             }
         }
 
         sourceFiles.forEach { generateCodeForFile(it.key) }
 
-        val compResult = sourceFiles.values.first { it.compilationResult != null }.compilationResult!!
+        val module = sourceFiles.values.first { it.compilationResult != null }.compilationResult!!.module
 
         val declarations = getDeclarationDescriptors(sourceFiles.values)
-        rebuildIndex(compResult.module, declarations)
+        rebuildIndex(module, declarations)
     }
 
     private fun setSourceFile(uri: URI, source: SourceFile) {
