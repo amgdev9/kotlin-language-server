@@ -21,7 +21,6 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     private var debounceLint = Debouncer()
     private val lintTodo = mutableSetOf<URI>()
-    private var lintCount = 0
 
     private val TextDocumentIdentifier.filePath: Path?
         get() = parseURI(uri).filePath
@@ -194,39 +193,36 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         if (!cancelCallback.invoke()) {
             reportDiagnostics(files, context.diagnostics)
         }
-        lintCount++
-    }
-
-    private fun reportDiagnostics(compiled: Collection<URI>, kotlinDiagnostics: Diagnostics) {
-        val byFile = kotlinDiagnostics
-            .flatMap(::convertDiagnostic)
-            .groupBy({ it.first }, { it.second })
-
-        for ((uri, diagnostics) in byFile) {
-            if (clientSession.sourceFiles.isOpen(uri)) {
-                clientSession.client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), diagnostics))
-
-                LOG.info("Reported {} diagnostics in {}", diagnostics.size, describeURI(uri))
-            }
-            else LOG.info("Ignore {} diagnostics in {} because it's not open", diagnostics.size, describeURI(uri))
-        }
-
-        val noErrors = compiled - byFile.keys
-        for (file in noErrors) {
-            clearDiagnostics(file)
-
-            LOG.info("No diagnostics in {}", file)
-        }
-
-        lintCount++
-    }
-
-    private fun clearDiagnostics(uri: URI) {
-        clientSession.client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), listOf()))
     }
 
     override fun close() {
         async.shutdown()
         debounceLint.shutdown()
     }
+}
+
+private fun reportDiagnostics(compiled: Collection<URI>, kotlinDiagnostics: Diagnostics) {
+    val byFile = kotlinDiagnostics
+        .flatMap(::convertDiagnostic)
+        .groupBy({ it.first }, { it.second })
+
+    for ((uri, diagnostics) in byFile) {
+        if (clientSession.sourceFiles.isOpen(uri)) {
+            clientSession.client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), diagnostics))
+
+            LOG.info("Reported {} diagnostics in {}", diagnostics.size, describeURI(uri))
+        }
+        else LOG.info("Ignore {} diagnostics in {} because it's not open", diagnostics.size, describeURI(uri))
+    }
+
+    val noErrors = compiled - byFile.keys
+    for (file in noErrors) {
+        clearDiagnostics(file)
+
+        LOG.info("No diagnostics in {}", file)
+    }
+}
+
+private fun clearDiagnostics(uri: URI) {
+    clientSession.client.publishDiagnostics(PublishDiagnosticsParams(uri.toString(), listOf()))
 }
