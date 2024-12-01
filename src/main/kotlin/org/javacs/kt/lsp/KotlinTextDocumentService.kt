@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture
 class KotlinTextDocumentService: TextDocumentService, Closeable {
     private val async = AsyncExecutor("textdoc")
 
-    private var debounceLint = Debouncer()
+    private val debounceLint = Debouncer()
     private val lintTodo = mutableSetOf<URI>()
 
     private val TextDocumentIdentifier.filePath: Path?
