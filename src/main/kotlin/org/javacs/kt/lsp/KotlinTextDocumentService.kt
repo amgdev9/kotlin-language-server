@@ -32,9 +32,9 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     private fun recover(uriString: String, position: Position): Pair<CompiledFile, Int>? {
         val uri = parseURI(uriString)
-        val content = clientSession.sourcePath.content(uri)
+        val content = clientSession.sourceFiles.content(uri)
         val offset = offset(content, position.line, position.character)
-        val compiled = clientSession.sourcePath.latestCompiledVersion(uri)
+        val compiled = clientSession.sourceFiles.latestCompiledVersion(uri)
         return Pair(compiled, offset)
     }
 
@@ -72,7 +72,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     override fun rename(params: RenameParams) = async.compute {
         val (file, cursor) = recover(params) ?: return@compute null
-        renameSymbol(file, cursor, clientSession.sourcePath, params.newName)
+        renameSymbol(file, cursor, params.newName)
     }
 
     override fun completion(position: CompletionParams): CompletableFuture<Either<List<CompletionItem>, CompletionList>> = async.compute {
@@ -94,7 +94,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         LOG.info("Find symbols in {}", describeURI(params.textDocument.uri))
 
         val uri = parseURI(params.textDocument.uri)
-        val parsed = clientSession.sourcePath.parsedFile(uri)
+        val parsed = clientSession.sourceFiles.parsedFile(uri)
 
         documentSymbols(parsed)
     }
@@ -110,7 +110,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         val uri = parseURI(params.textDocument.uri)
         lintNow(uri)
         debounceLint.schedule {
-            clientSession.sourcePath.save(uri)
+            clientSession.sourceFiles.save(uri)
         }
     }
 
@@ -136,9 +136,9 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     override fun references(position: ReferenceParams) = async.compute {
         position.textDocument.filePath
             ?.let { file ->
-                val content = clientSession.sourcePath.content(parseURI(position.textDocument.uri))
+                val content = clientSession.sourceFiles.content(parseURI(position.textDocument.uri))
                 val offset = offset(content, position.position.line, position.position.character)
-                findReferences(file, offset, clientSession.sourcePath)
+                findReferences(file, offset)
             }
     }
 
@@ -146,7 +146,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         LOG.info("Full semantic tokens in {}", describeURI(params.textDocument.uri))
 
         val uri = parseURI(params.textDocument.uri)
-        val file = clientSession.sourcePath.currentVersion(uri)
+        val file = clientSession.sourceFiles.currentVersion(uri)
 
         val tokens = encodedSemanticTokens(file)
 
@@ -157,7 +157,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
         LOG.info("Ranged semantic tokens in {}", describeURI(params.textDocument.uri))
 
         val uri = parseURI(params.textDocument.uri)
-        val file = clientSession.sourcePath.currentVersion(uri)
+        val file = clientSession.sourceFiles.currentVersion(uri)
 
         val tokens = encodedSemanticTokens(file, params.range)
         LOG.info("Found {} tokens", tokens.size)
@@ -175,9 +175,9 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     fun lintAll() {
         debounceLint.submitImmediately {
-            clientSession.sourcePath.compileAllFiles()
-            clientSession.sourcePath.saveAllFiles()
-            clientSession.sourcePath.refreshDependencyIndexes()
+            clientSession.sourceFiles.compileAllFiles()
+            clientSession.sourceFiles.saveAllFiles()
+            clientSession.sourceFiles.refreshDependencyIndexes()
         }
     }
 
@@ -200,7 +200,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
     private fun doLint(cancelCallback: () -> Boolean) {
         LOG.info("Linting {}", "${lintTodo.size} files")
         val files = clearLint()
-        val context = clientSession.sourcePath.compileFiles(files)
+        val context = clientSession.sourceFiles.compileFiles(files)
         if (!cancelCallback.invoke()) {
             reportDiagnostics(files, context.diagnostics)
         }

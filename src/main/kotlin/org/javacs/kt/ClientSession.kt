@@ -12,11 +12,10 @@ data class ClientSession(
     val db: Database,
     val rootPath: Path,
     val projectClasspath: ProjectClasspath,
+    val sourceFiles: SourceFiles,
     val client: LanguageClient,
     val tempFolder: TemporaryFolder,
     val decompilerOutputDir: Path,
-    val sourcePath: SourcePath,
-    val sourceFiles: SourceFiles
 )
 
 var clientSession: ClientSession

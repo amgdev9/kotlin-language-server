@@ -77,7 +77,6 @@ class KotlinLanguageServer: LanguageServer, LanguageClientAware, Closeable {
             client = client,
             tempFolder = TemporaryFolder(),
             decompilerOutputDir = createDecompilerOutputDirectory(),
-            sourcePath = SourcePath(),
             sourceFiles = SourceFiles(),
             projectClasspath = loadClasspathFromDisk(root)
         )

@@ -65,13 +65,13 @@ class SourceFile(
         val oldFile = clone()
 
         val (context, module) = clientSession.sourceFiles.compiler.compileKtFile(ktFile!!, allIncludingThis())
-        clientSession.sourcePath.parseDataWriteLock.withLock {
+        clientSession.sourceFiles.parseDataWriteLock.withLock {
             compiledContext = context
             this.module = module
             compiledFile = ktFile
         }
 
-        clientSession.sourcePath.refreshWorkspaceIndexes(listOf(oldFile), listOf(this))
+        clientSession.sourceFiles.refreshWorkspaceIndexes(listOf(oldFile), listOf(this))
     }
 
     fun prepareCompiledFile(): CompiledFile {
@@ -91,9 +91,9 @@ class SourceFile(
     private fun allIncludingThis(): Collection<KtFile> {
         parseIfChanged()
         if (isTemporary) {
-            return (clientSession.sourcePath.all().asSequence() + sequenceOf(ktFile!!)).toList()
+            return (clientSession.sourceFiles.all().asSequence() + sequenceOf(ktFile!!)).toList()
         }
-        return clientSession.sourcePath.all()
+        return clientSession.sourceFiles.all()
     }
 
     fun clone(): SourceFile =

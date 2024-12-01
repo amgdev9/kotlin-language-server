@@ -7,7 +7,6 @@ import org.eclipse.lsp4j.DocumentSymbol
 import org.eclipse.lsp4j.WorkspaceSymbol
 import org.eclipse.lsp4j.WorkspaceSymbolLocation
 import org.eclipse.lsp4j.jsonrpc.messages.Either
-import org.javacs.kt.SourcePath
 import org.javacs.kt.clientSession
 import org.javacs.kt.util.containsCharactersInOrder
 import org.javacs.kt.util.preOrderTraversal
@@ -32,7 +31,7 @@ private fun doDocumentSymbols(element: PsiElement): List<DocumentSymbol> {
 }
 
 fun workspaceSymbols(query: String): List<WorkspaceSymbol> =
-    clientSession.sourcePath
+    clientSession.sourceFiles
         .all()
         .asSequence()
         .flatMap(::fileSymbols)
@@ -78,8 +77,8 @@ private fun workspaceLocation(decl: KtNamedDeclaration): WorkspaceSymbolLocation
     return WorkspaceSymbolLocation(uri)
 }
 
-private fun symbolContainer(d: KtNamedDeclaration): String? =
-    d.parents
+private fun symbolContainer(decl: KtNamedDeclaration): String? =
+    decl.parents
         .filterIsInstance<KtNamedDeclaration>()
         .firstOrNull()
         ?.fqName.toString()
