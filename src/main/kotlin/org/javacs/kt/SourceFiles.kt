@@ -47,13 +47,13 @@ class SourceFiles {
 
         // Load all kotlin files into RAM
         for (uri in addSources) {
-            val sourceVersion = readFromDisk(uri, temporary = false)
-            if (sourceVersion == null) {
+            val sourceFile = readFromDisk(uri, temporary = false)
+            if (sourceFile == null) {
                 LOG.warn("Could not read source file '{}'", uri.path)
                 continue
             }
 
-            setSourceVersion(uri, sourceVersion)
+            setSourceFile(uri, sourceFile)
         }
 
         LOG.info("Searching java source files...")
@@ -63,7 +63,7 @@ class SourceFiles {
         compiler = Compiler(outputDirectory)
     }
 
-    private fun setSourceVersion(uri: URI, source: SourceFile) {
+    private fun setSourceFile(uri: URI, source: SourceFile) {
         val content = convertLineSeparators(source.content)
 
         if (source.isTemporary) {
@@ -77,27 +77,21 @@ class SourceFiles {
         }
     }
 
-    fun removeSourceVersion(uri: URI) {
-        deleteSourceFile(uri)
-    }
-
-    fun removeSourceVersionIfTemporary(uri: URI): Boolean {
-        if (sourceFiles[uri]!!.isTemporary) {
-            LOG.info("Removing temporary source file {} from source path", describeURI(uri))
-            deleteSourceFile(uri)
-            return true
-        } else {
-            return false
-        }
-    }
-
-    fun deleteSourceFile(uri: URI) {
+    fun removeSourceFile(uri: URI) {
         sourceFiles[uri]?.let {
             refreshWorkspaceIndexes(listOf(it), emptyList())
             clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(it.lastSavedFile))
         }
 
         sourceFiles.remove(uri)
+    }
+
+    fun removeSourceFileIfTemporary(uri: URI): Boolean {
+        if (!sourceFiles[uri]!!.isTemporary) return false
+
+        LOG.info("Removing temporary source file {} from source path", describeURI(uri))
+        removeSourceFile(uri)
+        return true
     }
 
     private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
@@ -118,7 +112,7 @@ class SourceFiles {
     }
 
     fun openSourceFile(uri: URI, content: String, version: Int) {
-        setSourceVersion(uri, SourceFile(uri = uri, content = content, version = version, language = languageOf(uri), isTemporary = false))
+        setSourceFile(uri, SourceFile(uri = uri, content = content, version = version, language = languageOf(uri), isTemporary = false))
         openFiles.add(uri)
     }
 
@@ -126,21 +120,20 @@ class SourceFiles {
         if (uri !in openFiles) return
 
         openFiles.remove(uri)
-        val removed = removeSourceVersionIfTemporary(uri)
+        val removed = removeSourceFileIfTemporary(uri)
         if (removed) return
 
         val disk = readFromDisk(uri, temporary = false)
 
         if (disk != null) {
-            setSourceVersion(uri, disk)
+            setSourceFile(uri, disk)
         } else {
-            removeSourceVersion(uri)
+            removeSourceFile(uri)
         }
     }
 
     fun edit(uri: URI, newVersion: Int, contentChanges: List<TextDocumentContentChangeEvent>) {
-        val existing = sourceFiles[uri]
-        if (existing == null) return
+        val existing = sourceFiles[uri]!!
 
         var newText = existing.content
 
@@ -154,7 +147,7 @@ class SourceFiles {
             else newText = patch(newText, change)
         }
 
-        setSourceVersion(
+        setSourceFile(
             uri,
             SourceFile(
                 uri = existing.uri,
@@ -188,7 +181,7 @@ class SourceFiles {
             val sourceVersion = readFromDisk(uri, sourceFiles[uri]?.isTemporary == true)
             if (sourceVersion == null) throw RuntimeException("Could not read source file '$uri' after being changed on disk")
 
-            setSourceVersion(uri, sourceVersion)
+            setSourceFile(uri, sourceVersion)
         } else if(isJavaSource(uri.filePath!!)) {
             refreshCompilerAndSourcePath()
         }
@@ -288,10 +281,10 @@ class SourceFiles {
     fun compileAllFiles() {
         // TODO: Investigate the possibility of compiling all files at once, instead of iterating here
         // At the moment, compiling all files at once sometimes leads to an internal error from the TopDownAnalyzer
-        sourceFiles.keys.forEach {
+        sourceFiles.forEach {
             // If one of the files fails to compile, we compile the others anyway
             try {
-                compileFiles(listOf(it))
+                compileFiles(listOf(it.key))
             } catch (ex: Exception) {
                 LOG.printStackTrace(ex)
             }
@@ -302,17 +295,17 @@ class SourceFiles {
      * Saves a file. This generates code for the file and deletes previously generated code for this file.
      */
     fun save(uri: URI) {
-        val file = sourceFiles[uri]
-        if (file == null) return
+        val file = sourceFiles[uri]!!
 
         // If the code generation fails for some reason, we generate code for the other files anyway
         try {
-            clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
             val module = file.module
             val context = file.compiledContext
             if (module == null || context == null) return
 
+            clientSession.sourceFiles.compiler.removeGeneratedCode(listOfNotNull(file.lastSavedFile))
             clientSession.sourceFiles.compiler.generateCode(module, context, listOfNotNull(file.compiledFile))
+
             file.lastSavedFile = file.compiledFile
         } catch (ex: Exception) {
             LOG.printStackTrace(ex)
@@ -320,7 +313,7 @@ class SourceFiles {
     }
 
     fun saveAllFiles() {
-        sourceFiles.keys.forEach { save(it) }
+        sourceFiles.forEach { save(it.key) }
     }
 
     fun refreshDependencyIndexes() {

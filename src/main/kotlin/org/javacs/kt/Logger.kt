@@ -122,15 +122,8 @@ class Logger {
         val time = if (logTime) "${Instant.now()} " else ""
         var thread = Thread.currentThread().name
 
-        return time + shortenOrPad(thread, 10) + msg.trimEnd()
+        return time + thread + " " + msg.trimEnd()
     }
-
-    private fun shortenOrPad(str: String, length: Int): String =
-        if (str.length <= length) {
-            str.padEnd(length, ' ')
-        } else {
-            ".." + str.substring(str.length - length + 2)
-        }
 }
 
 private fun LogLevel.toLSPMessageType(): MessageType = when (this) {

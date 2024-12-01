@@ -80,13 +80,14 @@ class Compiler(
                 val (container, trace) = compileEnvironment.createContainer(sourcePath)
                 val incrementalCompiler = container.get<ExpressionTypingServices>()
                 incrementalCompiler.getTypeInfo(
-                        scopeWithImports,
-                        expression,
-                        TypeUtils.NO_EXPECTED_TYPE,
-                        DataFlowInfo.EMPTY,
-                        InferenceSession.default,
-                        trace,
-                        true)
+                    scopeWithImports,
+                    expression,
+                    TypeUtils.NO_EXPECTED_TYPE,
+                    DataFlowInfo.EMPTY,
+                    InferenceSession.default,
+                    trace,
+                    true
+                )
                 return Pair(trace.bindingContext, container)
             }
         } catch (e: KotlinFrontEndException) {
