@@ -18,32 +18,6 @@ val javaHome: String? = System.getProperty("java.home", null)
 
 private class SourceVersion(val content: String, val version: Int, val language: Language?, val isTemporary: Boolean)
 
-private class NotifySourcePath() {
-    private val files = mutableMapOf<URI, SourceVersion>()
-
-    operator fun get(uri: URI): SourceVersion? = files[uri]
-
-    operator fun set(uri: URI, source: SourceVersion) {
-        val content = convertLineSeparators(source.content)
-
-        files[uri] = source
-        clientSession.sourcePath.put(uri, content, source.language, source.isTemporary)
-    }
-
-    fun remove(uri: URI) {
-        files.remove(uri)
-        clientSession.sourcePath.delete(uri)
-    }
-
-    fun removeIfTemporary(uri: URI): Boolean =
-        if (clientSession.sourcePath.deleteIfTemporary(uri)) {
-            files.remove(uri)
-            true
-        } else {
-            false
-        }
-}
-
 /**
  * Keep track of the text of all files in the workspace
  */
@@ -51,7 +25,7 @@ class SourceFiles {
     lateinit var compiler: Compiler
         private set
 
-    private val files = NotifySourcePath()
+    private val sourceVersionFiles = mutableMapOf<URI, SourceVersion>()
     private val openFiles = mutableSetOf<URI>()
     private val javaSourcePath = mutableSetOf<Path>()
     private val outputDirectory: File = Files.createTempDirectory("klsBuildOutput").toFile()
@@ -70,7 +44,7 @@ class SourceFiles {
                 continue
             }
 
-            files[uri] = sourceVersion
+            setSourceVersion(uri, sourceVersion)
         }
 
         LOG.info("Searching java source files...")
@@ -79,6 +53,26 @@ class SourceFiles {
         LOG.info("Instantiating compiler...")
         compiler = Compiler(outputDirectory)
     }
+
+    private fun setSourceVersion(uri: URI, source: SourceVersion) {
+        val content = convertLineSeparators(source.content)
+
+        sourceVersionFiles[uri] = source
+        clientSession.sourcePath.put(uri, content, source.language, source.isTemporary)
+    }
+
+    fun removeSourceVersion(uri: URI) {
+        sourceVersionFiles.remove(uri)
+        clientSession.sourcePath.delete(uri)
+    }
+
+    fun removeSourceVersionIfTemporary(uri: URI): Boolean =
+        if (clientSession.sourcePath.deleteIfTemporary(uri)) {
+            sourceVersionFiles.remove(uri)
+            true
+        } else {
+            false
+        }
 
     private fun findJavaSourceFiles(javaSourceDirs: Set<Path>): Set<Path> {
         return javaSourceDirs.asSequence()
@@ -98,7 +92,7 @@ class SourceFiles {
     }
 
     fun openSourceFile(uri: URI, content: String, version: Int) {
-        files[uri] = SourceVersion(content, version, languageOf(uri), isTemporary = false)
+        setSourceVersion(uri, SourceVersion(content, version, languageOf(uri), isTemporary = false))
         openFiles.add(uri)
     }
 
@@ -106,20 +100,20 @@ class SourceFiles {
         if (uri !in openFiles) return
 
         openFiles.remove(uri)
-        val removed = files.removeIfTemporary(uri)
+        val removed = removeSourceVersionIfTemporary(uri)
         if (removed) return
 
         val disk = readFromDisk(uri, temporary = false)
 
         if (disk != null) {
-            files[uri] = disk
+            setSourceVersion(uri, disk)
         } else {
-            files.remove(uri)
+            removeSourceVersion(uri)
         }
     }
 
     fun edit(uri: URI, newVersion: Int, contentChanges: List<TextDocumentContentChangeEvent>) {
-        val existing = files[uri]
+        val existing = sourceVersionFiles[uri]
         if(existing == null) return
 
         var newText = existing.content
@@ -134,7 +128,7 @@ class SourceFiles {
             else newText = patch(newText, change)
         }
 
-        files[uri] = SourceVersion(newText, newVersion, existing.language, existing.isTemporary)
+        setSourceVersion(uri, SourceVersion(newText, newVersion, existing.language, existing.isTemporary))
     }
 
     fun createdOnDisk(uri: URI) {
@@ -147,7 +141,7 @@ class SourceFiles {
 
     fun deletedOnDisk(uri: URI) {
         if (isKotlinSource(uri)) {
-            files.remove(uri)
+            sourceVersionFiles.remove(uri)
         } else if (isJavaSource(uri.filePath!!)) {
             javaSourcePath.remove(uri.filePath!!)
             refreshCompilerAndSourcePath()
@@ -156,10 +150,10 @@ class SourceFiles {
 
     fun changedOnDisk(uri: URI) {
         if (isKotlinSource(uri)) {
-            val sourceVersion = readFromDisk(uri, files[uri]?.isTemporary == true)
+            val sourceVersion = readFromDisk(uri, sourceVersionFiles[uri]?.isTemporary == true)
             if (sourceVersion == null) throw RuntimeException("Could not read source file '$uri' after being changed on disk")
 
-            files[uri] = sourceVersion
+            setSourceVersion(uri, sourceVersion)
         } else if(isJavaSource(uri.filePath!!)) {
             refreshCompilerAndSourcePath()
         }
