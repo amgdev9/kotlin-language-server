@@ -45,13 +45,7 @@ class SourceFiles {
 
         // Load all kotlin files into RAM
         for (uri in addSources) {
-            val sourceFile = readFromDisk(uri, temporary = false)
-            if (sourceFile == null) {
-                LOG.warn("Could not read source file '{}'", uri.path)
-                continue
-            }
-
-            sourceFiles[uri] = sourceFile
+            sourceFiles[uri] = readFromDisk(uri, temporary = false)!!
         }
 
         LOG.info("Searching java source files...")
@@ -59,6 +53,17 @@ class SourceFiles {
 
         LOG.info("Instantiating compiler...")
         compiler = Compiler(outputDirectory)
+    }
+
+    fun lintAll() {
+        compileAllFiles()
+        sourceFiles.forEach { generateCodeForFile(it.key) }
+
+        val module = sourceFiles.values.first { it.module != null }.module
+        if (module == null) return
+
+        val declarations = getDeclarationDescriptors(sourceFiles.values)
+        rebuildIndex(module, declarations)
     }
 
     private fun setSourceFile(uri: URI, source: SourceFile) {
@@ -194,7 +199,10 @@ class SourceFiles {
 
         LOG.info("Refreshing source path")
         sourceFiles.values.forEach { it.clean() }
-        sourceFiles.values.forEach { it.compile() }
+        sourceFiles.values.forEach {
+            it.parse()
+            it.compile()
+        }
     }
 
     fun isOpen(uri: URI): Boolean = (uri in openFiles)
@@ -220,7 +228,10 @@ class SourceFiles {
      */
     fun currentVersion(uri: URI): CompiledFile {
         val sourceFile = sourceFiles[uri]!!
-        sourceFile.compileIfChanged()
+        sourceFile.parseIfChanged()
+        if (sourceFile.ktFile?.text != sourceFile.compiledFile?.text) {
+            sourceFile.compile()
+        }
         return sourceFile.prepareCompiledFile()
     }
 
@@ -262,36 +273,39 @@ class SourceFiles {
         }
 
         // Parse the files that have changed
-        val parse = allChanged.associateWith { it.apply { parseIfChanged() }.ktFile!! }
+        val parsedKtFiles = allChanged.associateWith {
+            it.parseIfChanged()
+            return@associateWith it.ktFile!!
+        }
 
         // Get all the files. This will parse them if they changed
         val allFiles = all()
-        val (context, module) = clientSession.sourceFiles.compiler.compileKtFiles(parse.values, allFiles)
+        val (context, module) = clientSession.sourceFiles.compiler.compileKtFiles(parsedKtFiles.values, allFiles)
 
         // Update cache
-        for ((f, parsed) in parse) {
+        for ((sourceFile, ktFile) in parsedKtFiles) {
             parseDataWriteLock.withLock {
-                if (f.ktFile == parsed) {
+                if (sourceFile.ktFile == ktFile) {
                     //only updated if the parsed file didn't change:
-                    f.compiledFile = parsed
-                    f.compiledContext = context
-                    f.module = module
+                    sourceFile.compiledFile = ktFile
+                    sourceFile.compiledContext = context
+                    sourceFile.module = module
                 }
             }
         }
 
-        refreshWorkspaceIndexes(oldFiles, parse.keys.toList())
+        refreshWorkspaceIndexes(oldFiles, parsedKtFiles.keys.toList())
 
         return context
     }
 
-    fun compileAllFiles() {
+    private fun compileAllFiles() {
         // TODO: Investigate the possibility of compiling all files at once, instead of iterating here
         // At the moment, compiling all files at once sometimes leads to an internal error from the TopDownAnalyzer
         sourceFiles.forEach {
             // If one of the files fails to compile, we compile the others anyway
             try {
-                compileFiles(listOf(it.key))
+                compileAndUpdate(listOf(it.value))
             } catch (ex: Exception) {
                 LOG.printStackTrace(ex)
             }
@@ -314,20 +328,6 @@ class SourceFiles {
         } catch (ex: Exception) {
             LOG.printStackTrace(ex)
         }
-    }
-
-    fun saveAllFiles() {
-        sourceFiles.forEach { generateCodeForFile(it.key) }
-    }
-
-    fun refreshDependencyIndexes() {
-        compileAllFiles()
-
-        val module = sourceFiles.values.first { it.module != null }.module
-        if (module == null) return
-
-        val declarations = getDeclarationDescriptors(sourceFiles.values)
-        rebuildIndex(module, declarations)
     }
 
     /**
@@ -360,7 +360,10 @@ class SourceFiles {
         sourceFiles.values
             .asSequence()
             .filter { includeHidden || !it.isTemporary }
-            .map { it.apply { parseIfChanged() }.ktFile!! }
+            .map {
+                it.parseIfChanged()
+                return@map it.ktFile!!
+            }
             .toList()
 }
 

@@ -175,9 +175,7 @@ class KotlinTextDocumentService: TextDocumentService, Closeable {
 
     fun lintAll() {
         debounceLint.submitImmediately {
-            clientSession.sourceFiles.compileAllFiles()
-            clientSession.sourceFiles.saveAllFiles()
-            clientSession.sourceFiles.refreshDependencyIndexes()
+            clientSession.sourceFiles.lintAll()
         }
     }
 

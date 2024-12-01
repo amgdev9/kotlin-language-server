@@ -39,19 +39,7 @@ class SourceFile(
         }
     }
 
-    fun compileIfChanged() {
-        parseIfChanged()
-        if (ktFile?.text != compiledFile?.text) {
-            doCompile()
-        }
-    }
-
     fun compile() {
-        parse()
-        doCompile()
-    }
-
-    private fun doCompile() {
         LOG.info("Compiling {}", uri.filePath?.fileName)
 
         val oldFile = clone()
@@ -69,7 +57,7 @@ class SourceFile(
     fun prepareCompiledFile(): CompiledFile {
         parseIfChanged()
         if (compiledFile == null) {
-            doCompile()
+            compile()
         }
         return CompiledFile(
             content,
